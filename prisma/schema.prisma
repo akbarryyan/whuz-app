@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// PROVIDER MODELS
+// ============================================
+
+model ProviderSetting {
+  id              String   @id @default(cuid())
+  provider        String   @unique // DIGIFLAZZ, VIP_RESELLER
+  defaultMargin   Decimal  @db.Decimal(15, 2) @default(0) // Default margin untuk semua produk
+  marginType      String   @default("FIXED") // FIXED or PERCENTAGE
+  isActive        Boolean  @default(true)
+  lastBalance     Decimal? @db.Decimal(15, 2) // Cache last balance check
+  lastBalanceAt   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("provider_settings")
+}
+
+model ProviderLog {
+  id            String   @id @default(cuid())
+  provider      String   // DIGIFLAZZ, VIP_RESELLER
+  action        String   // checkBalance, getProducts, purchase, healthCheck
+  request       Json?    // Request payload
+  response      Json?    // Response payload
+  success       Boolean
+  errorMessage  String?  @db.Text
+  latency       Int      // in milliseconds
+  createdAt     DateTime @default(now())
+
+  @@index([provider, action])
+  @@index([createdAt])
+  @@map("provider_logs")
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  provider        String   // DIGIFLAZZ, VIP_RESELLER
+  providerCode    String   // SKU code from provider
+  name            String   @db.VarChar(255)
+  category        String   @db.VarChar(100)
+  brand           String   @db.VarChar(100)
+  type            String   @db.VarChar(50)
+  providerPrice   Decimal  @db.Decimal(15, 2) // Harga dari provider
+  margin          Decimal  @db.Decimal(15, 2) @default(0) // Margin keuntungan
+  sellingPrice    Decimal  @db.Decimal(15, 2) // Harga jual (providerPrice + margin)
+  stock           Boolean  @default(true)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true)
+  lastSyncAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orders          Order[]
+
+  @@unique([provider, providerCode])
+  @@index([category, brand])
+  @@index([isActive, stock])
+  @@map("products")
+}
+
+// ============================================
+// USER & WALLET MODELS
+// ============================================
+
+model User {
+  id              String   @id @default(cuid())
+  email           String?  @unique
+  phone           String?  @unique
+  name            String?
+  passwordHash    String?
+  role            String   @default("MEMBER") // MEMBER, ADMIN
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  wallet          Wallet?
+  orders          Order[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model Wallet {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  balance         Decimal  @db.Decimal(15, 2) @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries   LedgerEntry[]
+
+  @@map("wallets")
+}
+
+model LedgerEntry {
+  id              String   @id @default(cuid())
+  walletId        String
+  type            String   // HOLD, DEBIT, CREDIT, RELEASE, REFUND
+  amount          Decimal  @db.Decimal(15, 2)
+  balanceBefore   Decimal  @db.Decimal(15, 2)
+  balanceAfter    Decimal  @db.Decimal(15, 2)
+  reference       String?  // Order ID or transaction reference
+  description     String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([reference])
+  @@map("ledger_entries")
+}
+
+// ============================================
+// ORDER & PAYMENT MODELS
+// ============================================
+
+model Order {
+  id              String   @id @default(cuid())
+  orderCode       String   @unique // WP-YYMMDD-XXX
+  userId          String?  // NULL for guest
+  productId       String
+  targetNumber    String   @db.VarChar(100) // Phone, Game ID, etc.
+  targetData      Json?    // Additional data (server ID, zone, etc.)
+  amount          Decimal  @db.Decimal(15, 2)
+  status          String   // CREATED, WAITING_PAYMENT, PAID, PROCESSING_PROVIDER, SUCCESS, FAILED, EXPIRED, REFUNDED
+  paymentMethod   String   // WALLET, PAYMENT_GATEWAY
+  serialNumber    String?  @db.Text // SN from provider
+  providerTrxId   String?  // Transaction ID from provider
+  viewToken       String?  // For guest order access
+  viewTokenHash   String?  @unique // Hashed viewToken
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product         Product  @relation(fields: [productId], references: [id])
+  paymentInvoice  PaymentInvoice?
+  providerLogs    OrderProviderLog[]
+
+  @@index([orderCode])
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([viewTokenHash])
+  @@map("orders")
+}
+
+model PaymentInvoice {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  gatewayName     String   // PAKASIR, etc.
+  invoiceId       String   @unique // Invoice ID from gateway
+  amount          Decimal  @db.Decimal(15, 2)
+  paymentUrl      String?  @db.Text
+  status          String   // PENDING, PAID, EXPIRED, CANCELLED
+  paidAt          DateTime?
+  expiredAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([status])
+  @@map("payment_invoices")
+}
+
+model OrderProviderLog {
+  id              String   @id @default(cuid())
+  orderId         String
+  provider        String
+  action          String   // inquiry, purchase, checkStatus
+  request         Json?
+  response        Json?
+  success         Boolean
+  errorMessage    String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_provider_logs")
+}
+
+// ============================================
+// WEBHOOK MODELS
+// ============================================
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  source          String   // PAKASIR, DIGIFLAZZ, VIP_RESELLER
+  eventId         String   @unique // For idempotency
+  eventType       String
+  payload         Json
+  processed       Boolean  @default(false)
+  processedAt     DateTime?
+  errorMessage    String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  @@index([source, eventId])
+  @@index([processed])
+  @@map("webhook_events")
+}
