@@ -1,0 +1,666 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Quicksand } from "next/font/google";
+import { useToast } from "@/hooks/useToast";
+import { ToastContainer } from "@/components/ui/Toast";
+import BottomNavigation from "@/components/BottomNavigation";
+
+const quicksand = Quicksand({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+interface UserData {
+  id: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+}
+
+interface WalletData {
+  balance: number;
+}
+
+interface StatsData {
+  totalOrders: number;
+  successOrders: number;
+}
+
+type ModalType = "edit-profile" | "change-password" | null;
+
+export default function AkunPage() {
+  const router = useRouter();
+  const toast = useToast();
+
+  const [user, setUser] = useState<UserData | null>(null);
+  const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Modal state
+  const [modal, setModal] = useState<ModalType>(null);
+
+  // Edit profile form
+  const [editForm, setEditForm] = useState({ name: "", phone: "" });
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Change password form
+  const [pwForm, setPwForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
+
+  // ===================== FETCH SESSION =====================
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.isLoggedIn) {
+          router.replace("/login");
+          return;
+        }
+        setUser(data.user);
+        setWallet(data.wallet ?? { balance: 0 });
+        setStats(data.stats ?? { totalOrders: 0, successOrders: 0 });
+        setEditForm({
+          name: data.user.name ?? "",
+          phone: data.user.phone ?? "",
+        });
+      })
+      .catch(() => router.replace("/login"))
+      .finally(() => setIsLoading(false));
+  }, [router]);
+
+  // ===================== LOGOUT =====================
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      toast.success("Berhasil logout. Sampai jumpa!");
+      setTimeout(() => router.replace("/"), 900);
+    } catch {
+      toast.error("Gagal logout. Coba lagi.");
+      setIsLoggingOut(false);
+    }
+  };
+
+  // ===================== EDIT PROFILE =====================
+
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editLoading) return;
+
+    if (!editForm.name.trim() || editForm.name.trim().length < 2) {
+      toast.error("Nama minimal 2 karakter.");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUser((prev) => prev ? { ...prev, name: editForm.name.trim(), phone: editForm.phone.trim() || null } : prev);
+        toast.success("Profil berhasil diperbarui.");
+        setModal(null);
+      } else {
+        toast.error(data.message || "Gagal memperbarui profil.");
+      }
+    } catch {
+      toast.error("Koneksi bermasalah. Coba lagi.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // ===================== CHANGE PASSWORD =====================
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwLoading) return;
+
+    if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
+      toast.error("Semua field wajib diisi.");
+      return;
+    }
+    if (pwForm.newPassword.length < 6) {
+      toast.error("Password baru minimal 6 karakter.");
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      toast.error("Konfirmasi password tidak cocok.");
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: pwForm.currentPassword,
+          newPassword: pwForm.newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Password berhasil diubah.");
+        setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setModal(null);
+      } else {
+        toast.error(data.message || "Gagal mengubah password.");
+      }
+    } catch {
+      toast.error("Koneksi bermasalah. Coba lagi.");
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  // ===================== HELPERS =====================
+
+  const formatBalance = (amount: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("id-ID", { year: "numeric", month: "long", day: "numeric" });
+
+  const getInitials = (name: string | null) => {
+    if (!name) return "U";
+    return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  };
+
+  // ===================== LOADING SKELETON =====================
+
+  if (isLoading) {
+    return (
+      <div className={`${quicksand.className} flex min-h-screen justify-center bg-[#F5F5F5]`}>
+        <div className="w-full max-w-[480px] min-h-screen bg-white shadow-2xl">
+          {/* Header skeleton */}
+          <div className="bg-gradient-to-br from-purple-700 via-purple-600 to-purple-500 px-6 pt-12 pb-16">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-20 h-20 rounded-full bg-white/20 animate-pulse" />
+              <div className="h-5 w-36 rounded-full bg-white/20 animate-pulse" />
+              <div className="h-3.5 w-24 rounded-full bg-white/15 animate-pulse" />
+            </div>
+          </div>
+          <div className="px-5 -mt-8 flex flex-col gap-4">
+            <div className="h-28 rounded-2xl bg-slate-100 animate-pulse" />
+            <div className="h-48 rounded-2xl bg-slate-100 animate-pulse" />
+            <div className="h-32 rounded-2xl bg-slate-100 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  const menuItems = [
+    {
+      group: "Akun",
+      items: [
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          ),
+          label: "Edit Profil",
+          sub: "Nama & nomor HP",
+          color: "text-purple-600 bg-purple-50",
+          action: () => { setEditForm({ name: user.name ?? "", phone: user.phone ?? "" }); setModal("edit-profile"); },
+        },
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          ),
+          label: "Ubah Password",
+          sub: "Keamanan akun",
+          color: "text-blue-600 bg-blue-50",
+          action: () => setModal("change-password"),
+        },
+      ],
+    },
+    {
+      group: "Transaksi",
+      items: [
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          ),
+          label: "Riwayat Transaksi",
+          sub: `${stats?.totalOrders ?? 0} transaksi total`,
+          color: "text-emerald-600 bg-emerald-50",
+          action: () => router.push("/transaksi"),
+        },
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          ),
+          label: "Top Up Wallet",
+          sub: "Tambah saldo",
+          color: "text-amber-600 bg-amber-50",
+          action: () => toast.info("Fitur Top Up akan segera hadir!"),
+        },
+      ],
+    },
+    {
+      group: "Lainnya",
+      items: [
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ),
+          label: "Bantuan & FAQ",
+          sub: "Pusat bantuan",
+          color: "text-slate-600 bg-slate-100",
+          action: () => toast.info("Fitur Bantuan akan segera hadir!"),
+        },
+      ],
+    },
+  ];
+
+  // ===================== RENDER =====================
+
+  return (
+    <div className={`${quicksand.className} flex min-h-screen justify-center bg-[#F5F5F5]`}>
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
+
+      <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col">
+
+        {/* ===== HEADER HERO ===== */}
+        <div className="bg-gradient-to-br from-purple-700 via-purple-600 to-purple-500 px-6 pt-12 pb-20 relative overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-white/10" />
+          <div className="absolute top-20 -right-4 h-24 w-24 rounded-full bg-white/5" />
+          <div className="absolute -bottom-8 -left-8 h-36 w-36 rounded-full bg-white/10" />
+
+          <div className="relative z-10 flex flex-col items-center gap-3">
+            {/* Avatar */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold text-white shadow-xl border-2 border-white/30">
+                {getInitials(user.name)}
+              </div>
+              {/* Badge role */}
+              {user.role === "ADMIN" && (
+                <span className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                  ADMIN
+                </span>
+              )}
+            </div>
+
+            {/* Nama & email */}
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-white">
+                {user.name ?? "Member Whuzpay"}
+              </h1>
+              <p className="text-purple-200 text-xs mt-0.5">{user.email}</p>
+            </div>
+
+            {/* Member since */}
+            <span className="text-[11px] text-purple-200/80 bg-white/10 px-3 py-1 rounded-full">
+              Member sejak {formatDate(user.createdAt)}
+            </span>
+          </div>
+        </div>
+
+        {/* ===== SCROLLABLE CONTENT ===== */}
+        <div className="flex-1 overflow-y-auto px-5 -mt-10 pb-28 flex flex-col gap-4">
+
+          {/* ---- WALLET CARD ---- */}
+          <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 relative overflow-hidden">
+            {/* background deco */}
+            <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-purple-50 to-transparent rounded-r-3xl" />
+
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                  Saldo Wallet
+                </p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {formatBalance(wallet?.balance ?? 0)}
+                </p>
+                <button
+                  onClick={() => toast.info("Fitur Top Up akan segera hadir!")}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-full transition"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Top Up
+                </button>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-md shadow-purple-200">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ---- STATS ROW ---- */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              {
+                label: "Total Transaksi",
+                value: stats?.totalOrders ?? 0,
+                icon: (
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                ),
+                bg: "bg-blue-50",
+              },
+              {
+                label: "Berhasil",
+                value: stats?.successOrders ?? 0,
+                icon: (
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13l4 4L19 7" />
+                  </svg>
+                ),
+                bg: "bg-emerald-50",
+              },
+              {
+                label: "Gagal",
+                value: (stats?.totalOrders ?? 0) - (stats?.successOrders ?? 0),
+                icon: (
+                  <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ),
+                bg: "bg-rose-50",
+              },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex flex-col items-center gap-1.5">
+                <div className={`${stat.bg} rounded-xl p-2`}>{stat.icon}</div>
+                <p className="text-xl font-bold text-slate-800">{stat.value}</p>
+                <p className="text-[10px] text-slate-400 text-center leading-tight">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ---- MENU GROUPS ---- */}
+          {menuItems.map((group) => (
+            <div key={group.group}>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1 mb-2">
+                {group.group}
+              </p>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
+                {group.items.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={item.action}
+                    className="w-full flex items-center gap-3.5 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition text-left"
+                  >
+                    <div className={`${item.color} rounded-xl p-2.5 flex-shrink-0`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{item.sub}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* ---- LOGOUT BUTTON ---- */}
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center justify-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-100 text-rose-500 font-semibold text-sm py-4 rounded-2xl transition disabled:opacity-60"
+          >
+            {isLoggingOut ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Keluar...
+              </>
+            ) : (
+              <>
+                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Keluar dari Akun
+              </>
+            )}
+          </button>
+
+          {/* App version */}
+          <p className="text-center text-[11px] text-slate-300 -mt-1 mb-2">
+            Whuzpay v1.0.0 · PPOB &amp; Top Up Game
+          </p>
+        </div>
+
+        <BottomNavigation />
+      </div>
+
+      {/* ===== MODAL EDIT PROFILE ===== */}
+      {modal === "edit-profile" && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
+        >
+          <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl p-6 pb-10 animate-slide-up">
+            {/* Handle */}
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+
+            <h2 className="text-lg font-bold text-slate-800 mb-1">Edit Profil</h2>
+            <p className="text-sm text-slate-400 mb-5">Perbarui nama dan nomor HP kamu</p>
+
+            <form onSubmit={handleEditProfile} className="flex flex-col gap-4">
+              {/* Nama */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Nama Lengkap
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="Nama lengkap"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
+                    disabled={editLoading}
+                  />
+                </div>
+              </div>
+
+              {/* No HP */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Nomor HP <span className="normal-case font-normal text-slate-400">(opsional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="08xxxxxxxxxx"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
+                    disabled={editLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setModal(null)}
+                  className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:from-purple-700 hover:to-purple-600 disabled:opacity-60"
+                >
+                  {editLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Menyimpan...
+                    </span>
+                  ) : "Simpan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL CHANGE PASSWORD ===== */}
+      {modal === "change-password" && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
+        >
+          <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl p-6 pb-10">
+            {/* Handle */}
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+
+            <h2 className="text-lg font-bold text-slate-800 mb-1">Ubah Password</h2>
+            <p className="text-sm text-slate-400 mb-5">Pastikan password baru kuat dan mudah diingat</p>
+
+            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+              {/* Current password */}
+              {[
+                { key: "current" as const, label: "Password Saat Ini", field: "currentPassword" as const, placeholder: "Password lama kamu" },
+                { key: "new" as const, label: "Password Baru", field: "newPassword" as const, placeholder: "Minimal 6 karakter" },
+                { key: "confirm" as const, label: "Konfirmasi Password Baru", field: "confirmPassword" as const, placeholder: "Ulangi password baru" },
+              ].map(({ key, label, field, placeholder }) => (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    {label}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </span>
+                    <input
+                      type={showPw[key] ? "text" : "password"}
+                      value={pwForm[field]}
+                      onChange={(e) => setPwForm((p) => ({ ...p, [field]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-12 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
+                      disabled={pwLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw((p) => ({ ...p, [key]: !p[key] }))}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                      tabIndex={-1}
+                    >
+                      {showPw[key] ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={() => { setModal(null); setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }}
+                  className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={pwLoading}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:from-purple-700 hover:to-purple-600 disabled:opacity-60"
+                >
+                  {pwLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Menyimpan...
+                    </span>
+                  ) : "Simpan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

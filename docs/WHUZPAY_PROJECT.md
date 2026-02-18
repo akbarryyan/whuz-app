@@ -16,8 +16,6 @@
 ### Infrastructure
 - **Redis** (BullMQ queue)
 - **BullMQ** (jobs untuk eksekusi transaksi provider)
-- **Docker** (local dev)
-- **Nginx** (opsional untuk reverse proxy)
 
 ### External Integrations
 - **Payment Gateway:** Pakasir  
