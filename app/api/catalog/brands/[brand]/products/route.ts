@@ -81,6 +81,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       brand: matchedBrand.brand,
+      imageUrl: (await prisma.brandMeta.findUnique({ where: { brand: matchedBrand.brand }, select: { imageUrl: true } }))?.imageUrl ?? null,
       types: Object.keys(typeGroups),
       data: productsData,
       grouped: typeGroups,

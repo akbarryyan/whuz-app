@@ -2,32 +2,37 @@
 
 import { useState, useRef, useEffect } from "react";
 
-export default function Categories() {
-  const [activeTab, setActiveTab] = useState(0);
+interface CategoriesProps {
+  activeCategory: string | null;
+  onCategoryChange: (category: string | null) => void;
+}
+
+export default function Categories({ activeCategory, onCategoryChange }: CategoriesProps) {
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 });
   const [isSticky, setIsSticky] = useState(false);
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  
+
+  // value matches typeGroup param in /api/catalog/brands
   const categories = [
-    "Top Up Game",
-    "Top Up Via Login",
-    "Voucher",
-    "Item dan Skin",
-    "Top Up via Link Aja",
-    "Pulsa & Data",
-    "E-Wallet",
-    "Token Listrik",
+    { label: "Semua", value: null },
+    { label: "Top Up Game", value: "game" },
+    { label: "Pulsa & Data", value: "pulsa" },
+    { label: "E-Wallet", value: "ewallet" },
+    { label: "Token Listrik", value: "listrik" },
   ];
 
+  const activeIdx = categories.findIndex((c) => c.value === activeCategory);
+  const resolvedIdx = activeIdx === -1 ? 0 : activeIdx;
+
   useEffect(() => {
-    const activeButton = tabsRef.current[activeTab];
+    const activeButton = tabsRef.current[resolvedIdx];
     if (activeButton) {
       setUnderlineStyle({
         left: activeButton.offsetLeft,
         width: activeButton.offsetWidth,
       });
     }
-  }, [activeTab]);
+  }, [resolvedIdx]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,14 +60,14 @@ export default function Categories() {
               ref={(el) => {
                 tabsRef.current[idx] = el;
               }}
-              onClick={() => setActiveTab(idx)}
+              onClick={() => onCategoryChange(category.value)}
               className={`py-3 text-sm font-medium whitespace-nowrap transition-all duration-300 relative flex-shrink-0 ${
-                activeTab === idx
+                resolvedIdx === idx
                   ? "text-purple-600 scale-105"
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              {category}
+              {category.label}
             </button>
           ))}
           {/* Animated underline */}

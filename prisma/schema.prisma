@@ -223,3 +223,17 @@ model WebhookEvent {
   @@index([processed])
   @@map("webhook_events")
 }
+
+// ============================================
+// BRAND METADATA (managed by admin, survives re-sync)
+// ============================================
+
+model BrandMeta {
+  id          String   @id @default(cuid())
+  brand       String   @unique // Exact brand name matching Product.brand
+  imageUrl    String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("brand_meta")
+}

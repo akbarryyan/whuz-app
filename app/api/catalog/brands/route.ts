@@ -1,24 +1,49 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/infra/db/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Maps frontend tab key → actual product `type` values in DB
+const TYPE_GROUP_MAP: Record<string, string[]> = {
+  game:    ["game"],
+  pulsa:   ["paket-internet", "paket-telepon", "pulsa-reguler", "pulsa-transfer", "pulsa-internasional", "paket-lainnya"],
+  ewallet: ["saldo-emoney"],
+  listrik: ["token-pln"],
+};
+
 /**
- * GET /api/catalog/brands
- * Return distinct brands with product count (public, no auth)
- * Only active products with stock
+ * GET /api/catalog/brands?typeGroup=game
+ * Return distinct brands with product count + imageUrl from BrandMeta (public, no auth)
+ * Only active products with stock.
+ * Optional ?typeGroup= to filter by product type group.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const typeGroup = searchParams.get("typeGroup") ?? undefined;
+    const types = typeGroup ? TYPE_GROUP_MAP[typeGroup] : undefined;
+
+    const where: Parameters<typeof prisma.product.groupBy>[0]["where"] = {
+      isActive: true,
+      stock: true,
+      ...(types ? { type: { in: types } } : {}),
+    };
+
     const brands = await prisma.product.groupBy({
       by: ["brand"],
-      where: {
-        isActive: true,
-        stock: true,
-      },
+      where,
       _count: { id: true },
       orderBy: { brand: "asc" },
     });
+
+    // Fetch imageUrls from BrandMeta in one query
+    const brandNames = brands.map((b) => b.brand);
+    const metas = await prisma.brandMeta.findMany({
+      where: { brand: { in: brandNames } },
+      select: { brand: true, imageUrl: true },
+    });
+    const metaMap: Record<string, string | null> = {};
+    for (const m of metas) metaMap[m.brand] = m.imageUrl ?? null;
 
     const data = brands.map((b) => ({
       brand: b.brand,
@@ -27,6 +52,7 @@ export async function GET() {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, ""),
       productCount: b._count.id,
+      imageUrl: metaMap[b.brand] ?? null,
     }));
 
     return NextResponse.json({ success: true, data });

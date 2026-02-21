@@ -64,10 +64,9 @@ export default function AboutFAQ() {
   };
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="mt-4 space-y-8">
       {/* About Section */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h2 className="text-[14px] font-bold text-slate-800 mb-4">Top Up Game</h2>
         <div className="text-slate-600 text-sm leading-relaxed space-y-3">
           <p>
             Whuzpay adalah tempat top up game termurah di Indonesia. Seluruh gamer bisa top up, beli voucher game, item in-game, dan
@@ -79,7 +78,10 @@ export default function AboutFAQ() {
         </div>
 
         {/* Game Tags */}
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-4">
+          <h2 className="text-[14px] font-bold text-slate-800 mb-2">Top Up Game</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {gameTags.map((tag, idx) => (
             <button
               key={idx}
@@ -130,7 +132,7 @@ export default function AboutFAQ() {
           <div className="mt-6 text-center">
             <button
               onClick={() => setShowAllFaq(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#003D99] hover:bg-[#002766] text-white text-[12px] font-semibold rounded-lg transition-colors"
             >
               Baca Selengkapnya
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +150,7 @@ export default function AboutFAQ() {
                 setShowAllFaq(false);
                 setOpenFaq(null);
               }}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#003D99] hover:bg-[#002766] text-white text-[12px] font-semibold rounded-lg transition-colors"
             >
               Tampilkan Lebih Sedikit
               <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">

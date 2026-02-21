@@ -7,10 +7,11 @@ interface BrandItem {
   brand: string;
   slug: string;
   productCount: number;
+  imageUrl: string | null;
 }
 
-// Mapping brand populer ke gambar (fallback ke initials jika tidak ada)
-const BRAND_IMAGES: Record<string, string> = {
+// Fallback images for brands without a DB imageUrl
+const BRAND_IMAGES_FALLBACK: Record<string, string> = {
   "Mobile Legends": "https://i.ibb.co.com/9wX5jZm/ml.png",
   "Free Fire": "https://i.ibb.co.com/yhRfk3L/ff.png",
   "PUBG Mobile": "https://i.ibb.co.com/fSLq9YH/pubg.png",
@@ -36,21 +37,30 @@ const BRAND_GRADIENTS = [
   "from-lime-500 to-green-600",
 ];
 
-export default function GameGrid() {
+interface GameGridProps {
+  category?: string | null;
+}
+
+export default function GameGrid({ category }: GameGridProps) {
   const router = useRouter();
   const [brands, setBrands] = useState<BrandItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    fetch("/api/catalog/brands")
+    setLoading(true);
+    setShowAll(false);
+    const url = category
+      ? `/api/catalog/brands?typeGroup=${encodeURIComponent(category)}`
+      : "/api/catalog/brands";
+    fetch(url)
       .then((r) => r.json())
       .then((res) => {
         if (res.success) setBrands(res.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [category]);
 
   const displayedBrands = showAll ? brands : brands.slice(0, 12);
 
@@ -79,14 +89,14 @@ export default function GameGrid() {
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-slate-800">Pilih Game</h3>
+          <h3 className="text-lg font-bold text-slate-800">Pilih Produk</h3>
         </div>
         <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
           <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <p className="text-sm text-slate-500">Belum ada produk tersedia saat ini.</p>
+          <p className="text-sm text-slate-500">Belum ada produk tersedia{category ? ` di kategori ini` : ""}.</p>
         </div>
       </div>
     );
@@ -95,7 +105,7 @@ export default function GameGrid() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-slate-800">Pilih Game</h3>
+        <h3 className="text-lg font-bold text-slate-800">Pilih Produk</h3>
         {brands.length > 12 && (
           <button
             onClick={() => setShowAll((v) => !v)}
@@ -108,7 +118,7 @@ export default function GameGrid() {
 
       <div className="grid grid-cols-4 gap-3">
         {displayedBrands.map((brand, idx) => {
-          const image = BRAND_IMAGES[brand.brand];
+          const image = brand.imageUrl ?? BRAND_IMAGES_FALLBACK[brand.brand] ?? null;
           const gradient = BRAND_GRADIENTS[idx % BRAND_GRADIENTS.length];
           const initials = brand.brand
             .split(" ")

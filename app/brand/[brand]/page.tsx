@@ -58,6 +58,7 @@ export default function BrandDetailPage({
 
   const [brandSlug, setBrandSlug] = useState<string>("");
   const [brandName, setBrandName] = useState<string>("");
+  const [brandImageUrl, setBrandImageUrl] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [types, setTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,7 @@ export default function BrandDetailPage({
 
         if (data.success) {
           setBrandName(data.brand);
+          setBrandImageUrl(data.imageUrl ?? null);
           setProducts(data.data);
           setTypes(data.types);
         } else {
@@ -112,8 +114,8 @@ export default function BrandDetailPage({
   // Does this brand need zone ID?
   const needsZone = BRANDS_WITH_ZONE.includes(brandName);
 
-  // Brand image or initials
-  const brandImage = BRAND_IMAGES[brandName];
+  // Brand image or initials — prefer DB imageUrl, fallback to hardcoded map
+  const brandImage = brandImageUrl ?? BRAND_IMAGES[brandName] ?? null;
   const brandInitials = brandName
     ? brandName
         .split(" ")
@@ -280,24 +282,15 @@ export default function BrandDetailPage({
               </svg>
             </button>
 
-            {/* Brand image + name centered */}
-            <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
-              {brandImage ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={brandImage}
-                  alt={brandName}
-                  className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                />
-              ) : brandInitials ? (
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-xs">{brandInitials}</span>
-                </div>
-              ) : null}
-              <span className="text-white font-bold text-base truncate">
-                {brandName || "Top Up"}
-              </span>
-            </div>
+            {/* Site logo — next to back button */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://www.vcgamers.com/image/vcg-logo.svg"
+              alt="WhuzPay"
+              className="h-7 w-auto object-contain flex-shrink-0"
+            />
+
+            <div className="flex-1" />
 
             {/* Right icons */}
             <div className="flex items-center gap-1 flex-shrink-0">

@@ -2,8 +2,24 @@
 
 import { useState, useEffect } from "react";
 
+const PLACEHOLDER_TEXTS = [
+  "Cari top up Mobile Legends...",
+  "Cari top up Free Fire...",
+  "Cari top up PUBG Mobile...",
+  "Cari top up Genshin Impact...",
+  "Cari voucher Valorant...",
+  "Cari top up Honkai Star Rail...",
+  "Cari pulsa & data...",
+  "Cari token listrik...",
+  "Cari e-wallet...",
+];
+
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [charIdx, setCharIdx] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -12,6 +28,35 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Typewriter effect
+  useEffect(() => {
+    const fullText = PLACEHOLDER_TEXTS[placeholderIdx];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (!isDeleting && charIdx < fullText.length) {
+      // Typing
+      timeout = setTimeout(() => {
+        setDisplayText(fullText.slice(0, charIdx + 1));
+        setCharIdx((c) => c + 1);
+      }, 55);
+    } else if (!isDeleting && charIdx === fullText.length) {
+      // Pause at end, then start deleting
+      timeout = setTimeout(() => setIsDeleting(true), 1800);
+    } else if (isDeleting && charIdx > 0) {
+      // Deleting
+      timeout = setTimeout(() => {
+        setDisplayText(fullText.slice(0, charIdx - 1));
+        setCharIdx((c) => c - 1);
+      }, 30);
+    } else if (isDeleting && charIdx === 0) {
+      // Move to next text
+      setIsDeleting(false);
+      setPlaceholderIdx((i) => (i + 1) % PLACEHOLDER_TEXTS.length);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [charIdx, isDeleting, placeholderIdx]);
 
   return (
     <header
@@ -24,11 +69,13 @@ export default function Header() {
       {/* Logo Row + Icons */}
       <div className="flex items-center justify-between">
         {/* Logo - just hidden when scrolled, no animation */}
-        <div className={`flex items-center gap-2 ${isScrolled ? "invisible" : ""}`}>
-          <div className="bg-white rounded-lg px-3 py-1.5">
-            <span className="text-purple-600 font-bold text-lg">WZ</span>
-          </div>
-          <span className="text-white font-semibold text-lg">Whuzpay</span>
+        <div className={`flex items-center ${isScrolled ? "invisible" : ""}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://www.vcgamers.com/image/vcg-logo.svg"
+            alt="WhuzPay"
+            className="h-8 w-auto object-contain"
+          />
         </div>
 
         {/* Icons */}
@@ -51,11 +98,11 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Search Bar - This is the only element that animates */}
+      {/* Search Bar */}
       <div
         className={`relative transition-all duration-300 ease-in-out ${
           isScrolled
-            ? "-mt-[38px] mr-[108px]"
+            ? "-mt-[34px] mr-[108px]"
             : "mt-2.5 mr-0"
         }`}
       >
@@ -64,7 +111,7 @@ export default function Header() {
         </svg>
         <input
           type="text"
-          placeholder="Cari game, voucher, atau produk..."
+          placeholder={displayText}
           className="w-full py-2 px-4 pl-10 rounded-md bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-300 text-[13px]"
         />
       </div>

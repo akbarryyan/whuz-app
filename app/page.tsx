@@ -18,6 +18,7 @@ const quicksand = Quicksand({
 
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeTypeGroup, setActiveTypeGroup] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,11 +38,11 @@ export default function Home() {
         {isScrolled && <div className="h-[52px]" />}
         <BannerCarousel />
         <FlashSale />
-        <Categories />
+        <Categories activeCategory={activeTypeGroup} onCategoryChange={setActiveTypeGroup} />
 
         {/* Main Content */}
         <div className="flex-1 px-4 py-6 bg-slate-50 pb-24">
-          <GameGrid />
+          <GameGrid category={activeTypeGroup} />
           <AboutFAQ />
           <Footer />
         </div>
