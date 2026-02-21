@@ -368,12 +368,12 @@ export class ProviderManagementService {
           provider: providerType,
           providerCode: p.providerCode,
           name: p.providerName,
-          category: p.category,
-          brand: p.brand,
-          type: p.type,
+          category: p.category || p.type || "Other",
+          brand: p.brand || "Other",
+          type: p.type || "other",
           providerPrice: p.price,
           stock: p.stock,
-          description: p.description,
+          description: p.description === null ? undefined : p.description,
         }))
       );
 

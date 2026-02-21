@@ -132,9 +132,16 @@ export class DigiflazzAdapter implements IProviderPort {
       }
 
       const data = await response.json();
+      const digiStatus: string = data.data?.status ?? "";
+
+      const status =
+        digiStatus === "Sukses" ? "success"
+        : digiStatus === "Pending" ? "pending"
+        : "failed";
 
       return {
-        success: data.data?.status === "Sukses",
+        success: status === "success",
+        status,
         transactionId: data.data?.trx_id || refId,
         serialNumber: data.data?.sn,
         message: data.data?.message || "Transaction processed",
@@ -143,6 +150,49 @@ export class DigiflazzAdapter implements IProviderPort {
     } catch (error) {
       throw new ProviderError(
         `Failed to purchase from Digiflazz: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "DIGIFLAZZ"
+      );
+    }
+  }
+
+  async checkStatus(providerRef: string): Promise<ProviderPurchaseResponse> {
+    // Digiflazz is idempotent on ref_id — re-posting the same ref returns the current status
+    try {
+      const response = await fetch(`${this.baseUrl}/transaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: this.username,
+          buyer_sku_code: "", // Not needed for status check via ref_id
+          customer_no: "",
+          ref_id: providerRef,
+          sign: this.generateSignature(providerRef),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new ProviderError(`Digiflazz checkStatus error: ${response.statusText}`, "DIGIFLAZZ");
+      }
+
+      const data = await response.json();
+      const digiStatus: string = data.data?.status ?? "";
+
+      const status =
+        digiStatus === "Sukses" ? "success"
+        : digiStatus === "Pending" ? "pending"
+        : "failed";
+
+      return {
+        success: status === "success",
+        status,
+        transactionId: data.data?.trx_id || providerRef,
+        serialNumber: data.data?.sn,
+        message: data.data?.message || digiStatus,
+        rawResponse: data,
+      };
+    } catch (error) {
+      throw new ProviderError(
+        `Failed to checkStatus from Digiflazz: ${error instanceof Error ? error.message : "Unknown error"}`,
         "DIGIFLAZZ"
       );
     }

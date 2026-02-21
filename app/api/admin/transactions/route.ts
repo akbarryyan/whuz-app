@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       status: order.status,
       paymentMethod: order.paymentMethod,
       serialNumber: order.serialNumber,
-      providerTrxId: order.providerTrxId,
+      providerRef: order.providerRef,
       notes: order.notes,
       paymentInvoice: order.paymentInvoice,
       createdAt: order.createdAt.toISOString(),

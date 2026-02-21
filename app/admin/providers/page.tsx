@@ -603,16 +603,26 @@ export default function ProvidersPage() {
             </div>
 
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-[13%]" />
+                  <col className="w-[25%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[8%]" />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-                    <th className="pb-3 font-medium">Kode</th>
-                    <th className="pb-3 font-medium">Nama Produk</th>
-                    <th className="pb-3 font-medium">Kategori</th>
-                    <th className="pb-3 font-medium">Brand</th>
-                    <th className="pb-3 font-medium">Harga Provider</th>
-                    <th className="pb-3 font-medium">Margin</th>
-                    <th className="pb-3 font-medium">Harga Jual</th>
+                    <th className="pb-3 pr-3 font-medium">Kode</th>
+                    <th className="pb-3 pr-3 font-medium">Nama Produk</th>
+                    <th className="pb-3 pr-3 font-medium">Kategori</th>
+                    <th className="pb-3 pr-3 font-medium">Brand</th>
+                    <th className="pb-3 pr-3 font-medium">Harga Provider</th>
+                    <th className="pb-3 pr-3 font-medium">Margin</th>
+                    <th className="pb-3 pr-3 font-medium">Harga Jual</th>
                     <th className="pb-3 font-medium">Status</th>
                   </tr>
                 </thead>
@@ -622,17 +632,19 @@ export default function ProvidersPage() {
                       key={`${product.code}-${idx}`}
                       className="border-b border-slate-50 text-sm transition hover:bg-slate-50"
                     >
-                      <td className="py-3 font-mono text-xs text-slate-600">{product.code}</td>
-                      <td className="py-3 font-medium text-slate-800">{product.name}</td>
-                      <td className="py-3 text-slate-600">{product.category}</td>
-                      <td className="py-3 text-slate-600">{product.brand}</td>
-                      <td className="py-3 text-slate-600">
+                      <td className="py-3 pr-3 font-mono text-xs text-slate-600 truncate max-w-0" title={product.code}>{product.code}</td>
+                      <td className="py-3 pr-3 font-medium text-slate-800 max-w-0">
+                        <span className="block truncate" title={product.name}>{product.name}</span>
+                      </td>
+                      <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.category}>{product.category}</td>
+                      <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.brand}>{product.brand}</td>
+                      <td className="py-3 pr-3 text-slate-600 whitespace-nowrap">
                         {formatCurrency(product.providerPrice)}
                       </td>
-                      <td className="py-3 font-medium text-emerald-600">
+                      <td className="py-3 pr-3 font-medium text-emerald-600 whitespace-nowrap">
                         +{formatCurrency(product.margin)}
                       </td>
-                      <td className="py-3 font-semibold text-slate-800">
+                      <td className="py-3 pr-3 font-semibold text-slate-800 whitespace-nowrap">
                         {formatCurrency(product.sellingPrice)}
                       </td>
                       <td className="py-3">

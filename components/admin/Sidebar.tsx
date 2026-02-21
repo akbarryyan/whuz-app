@@ -91,6 +91,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <nav className="flex flex-col gap-1 text-sm">
             {[
               { name: "Provider", icon: "🔌", href: "/admin/providers" },
+              { name: "Test Transaksi", icon: "🧪", href: "/admin/test-transaction" },
               { name: "Member", icon: "👥", href: "/admin/members" },
               { name: "Webhook", icon: "🔗", href: "/admin/webhooks" },
               { name: "Pengaturan", icon: "⚙️", href: "/admin/settings" },

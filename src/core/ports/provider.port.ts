@@ -26,6 +26,8 @@ export interface ProviderPurchaseRequest {
 
 export interface ProviderPurchaseResponse {
   success: boolean;
+  /** Explicit status: "success" | "pending" | "failed" — more reliable than parsing message */
+  status: "success" | "pending" | "failed";
   transactionId: string;
   serialNumber?: string;
   message: string;
@@ -60,6 +62,12 @@ export interface IProviderPort {
    * Purchase product from provider
    */
   purchase(request: ProviderPurchaseRequest): Promise<ProviderPurchaseResponse>;
+
+  /**
+   * Check the status of a pending transaction by provider's transaction ID / ref.
+   * Called by reconcile service for orders stuck in PROCESSING_PROVIDER.
+   */
+  checkStatus(providerRef: string): Promise<ProviderPurchaseResponse>;
 
   /**
    * Health check

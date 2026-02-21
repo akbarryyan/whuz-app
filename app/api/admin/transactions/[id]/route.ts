@@ -87,7 +87,7 @@ export async function GET(
       status: order.status,
       paymentMethod: order.paymentMethod,
       serialNumber: order.serialNumber,
-      providerTrxId: order.providerTrxId,
+      providerRef: order.providerRef,
       notes: order.notes,
       paymentInvoice: order.paymentInvoice ? {
         ...order.paymentInvoice,

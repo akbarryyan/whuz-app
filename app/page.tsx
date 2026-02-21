@@ -6,7 +6,6 @@ import Header from "@/components/home/Header";
 import BannerCarousel from "@/components/home/BannerCarousel";
 import FlashSale from "@/components/home/FlashSale";
 import GameGrid from "@/components/home/GameGrid";
-import PromoSection from "@/components/home/PromoSection";
 import Categories from "@/components/home/Categories";
 import AboutFAQ from "@/components/home/AboutFAQ";
 import Footer from "@/components/home/Footer";
@@ -43,7 +42,6 @@ export default function Home() {
         {/* Main Content */}
         <div className="flex-1 px-4 py-6 bg-slate-50 pb-24">
           <GameGrid />
-          <PromoSection />
           <AboutFAQ />
           <Footer />
         </div>

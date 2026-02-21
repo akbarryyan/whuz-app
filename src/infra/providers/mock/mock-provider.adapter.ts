@@ -52,6 +52,7 @@ export class MockProviderAdapter implements IProviderPort {
       case "success":
         return {
           success: true,
+          status: "success",
           transactionId,
           serialNumber: this.generateMockSN(request.productCode),
           message: "Transaction successful (MOCK)",
@@ -61,6 +62,7 @@ export class MockProviderAdapter implements IProviderPort {
       case "failed":
         return {
           success: false,
+          status: "failed",
           transactionId,
           message: "Transaction failed (MOCK)",
           rawResponse: { mock: true, scenario: "failed" },
@@ -70,6 +72,7 @@ export class MockProviderAdapter implements IProviderPort {
       case "pending_then_success":
         return {
           success: false,
+          status: "pending",
           transactionId,
           message: "Transaction pending (MOCK)",
           rawResponse: { mock: true, scenario: "pending" },
@@ -78,12 +81,26 @@ export class MockProviderAdapter implements IProviderPort {
       default:
         return {
           success: true,
+          status: "success",
           transactionId,
           serialNumber: this.generateMockSN(request.productCode),
           message: "Transaction successful (MOCK)",
           rawResponse: { mock: true, scenario: "default" },
         };
     }
+  }
+
+  async checkStatus(providerRef: string): Promise<ProviderPurchaseResponse> {
+    await this.simulateDelay();
+    // Mock: checkStatus always resolves to success (simulates provider finalised the order)
+    return {
+      success: true,
+      status: "success",
+      transactionId: providerRef,
+      serialNumber: `SN-CHECK-${Date.now()}`,
+      message: "Transaction successful (MOCK checkStatus)",
+      rawResponse: { mock: true, scenario: "checkStatus_success" },
+    };
   }
 
   async healthCheck(): Promise<ProviderHealthCheck> {

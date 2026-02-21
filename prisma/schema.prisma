@@ -133,15 +133,19 @@ model Order {
   orderCode       String   @unique // WP-YYMMDD-XXX
   userId          String?  // NULL for guest
   productId       String
+  provider        String?  // DIGIFLAZZ, VIP_RESELLER — which provider to use
   targetNumber    String   @db.VarChar(100) // Phone, Game ID, etc.
   targetData      Json?    // Additional data (server ID, zone, etc.)
-  amount          Decimal  @db.Decimal(15, 2)
+  // Pricing snapshot (frozen at order creation)
+  basePrice       Decimal  @db.Decimal(15, 2) @default(0) // Provider cost
+  markup          Decimal  @db.Decimal(15, 2) @default(0) // Markup/margin applied
+  fee             Decimal  @db.Decimal(15, 2) @default(0) // Payment gateway fee
+  amount          Decimal  @db.Decimal(15, 2)              // Total charged to customer
   status          String   // CREATED, WAITING_PAYMENT, PAID, PROCESSING_PROVIDER, SUCCESS, FAILED, EXPIRED, REFUNDED
   paymentMethod   String   // WALLET, PAYMENT_GATEWAY
   serialNumber    String?  @db.Text // SN from provider
-  providerTrxId   String?  // Transaction ID from provider
-  viewToken       String?  // For guest order access
-  viewTokenHash   String?  @unique // Hashed viewToken
+  providerRef     String?  // idempotency ref (transaction ID from provider)
+  viewTokenHash   String?  @unique // Hashed viewToken — raw token never stored
   notes           String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -164,8 +168,13 @@ model PaymentInvoice {
   gatewayName     String   // PAKASIR, etc.
   invoiceId       String   @unique // Invoice ID from gateway
   amount          Decimal  @db.Decimal(15, 2)
+  fee             Decimal  @db.Decimal(15, 2) @default(0)
+  totalPayment    Decimal  @db.Decimal(15, 2) @default(0)
+  method          String?  // Payment method chosen (QRIS, VA_BCA, etc.)
+  paymentNumber   String?  @db.VarChar(255) // VA number, QRIS string, etc.
   paymentUrl      String?  @db.Text
   status          String   // PENDING, PAID, EXPIRED, CANCELLED
+  rawPayload      Json?    // Last raw webhook payload
   paidAt          DateTime?
   expiredAt       DateTime?
   createdAt       DateTime @default(now())

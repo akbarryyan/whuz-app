@@ -81,51 +81,77 @@ export class VipResellerAdapter implements IProviderPort {
   }
 
   async getProducts(): Promise<ProviderProduct[]> {
-    try {
-      const sign = this.sign || this.generateSignature();
-      
-      const response = await fetch(`${this.baseUrl}/prepaid`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          key: this.apiKey,
-          sign: sign,
-          type: "services",
-        }).toString(),
-      });
+    const sign = this.sign || this.generateSignature();
 
-      if (!response.ok) {
-        throw new ProviderError(
-          `VIP Reseller API error: ${response.statusText}`,
-          "VIP_RESELLER"
-        );
-      }
+    const endpoints: Array<{ url: string; defaultType: string }> = [
+      { url: `${this.baseUrl}/prepaid`, defaultType: "prepaid" },
+      { url: `${this.baseUrl}/game-feature`, defaultType: "game" },
+    ];
 
-      const data = await response.json();
+    const fetchEndpoint = async (url: string, defaultType: string): Promise<ProviderProduct[]> => {
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            key: this.apiKey,
+            sign: sign,
+            type: "services",
+          }).toString(),
+        });
 
-      if (data.result === false) {
-        throw new ProviderError(
-          data.message || "Failed to get products",
-          "VIP_RESELLER"
-        );
-      }
+        if (!response.ok) {
+          console.warn(`[VIP] ${url} returned ${response.status}: ${response.statusText}`);
+          return [];
+        }
 
-      if (!data.data || !Array.isArray(data.data)) {
+        const data = await response.json();
+
+        if (data.result === false) {
+          console.warn(`[VIP] ${url} result=false: ${data.message}`);
+          return [];
+        }
+
+        if (!data.data || !Array.isArray(data.data)) {
+          return [];
+        }
+
+        return data.data.map((item: any) => ({
+          providerCode: item.code,
+          providerName: item.name,
+          category: item.category || item.game || defaultType,
+          brand: item.brand || item.game || "Other",
+          type: item.type || defaultType,
+          price: parseFloat(item.price?.basic || item.price || "0"),
+          stock: item.status === "available" || item.seller_product_status === "available",
+          description: item.description || null,
+        }));
+      } catch (err) {
+        console.warn(`[VIP] Failed to fetch ${url}:`, err);
         return [];
       }
+    };
 
-      return data.data.map((item: any) => ({
-        providerCode: item.code,
-        providerName: item.name,
-        category: item.category,
-        brand: item.brand,
-        type: item.type || "prepaid",
-        price: parseFloat(item.price?.basic || item.price || "0"),
-        stock: item.status === "available" || item.seller_product_status === "available",
-        description: item.description,
-      }));
+    try {
+      const results = await Promise.all(
+        endpoints.map(({ url, defaultType }) => fetchEndpoint(url, defaultType))
+      );
+
+      const allProducts = results.flat();
+
+      // Deduplicate by providerCode (in case of overlap)
+      const seen = new Set<string>();
+      const unique = allProducts.filter((p) => {
+        if (seen.has(p.providerCode)) return false;
+        seen.add(p.providerCode);
+        return true;
+      });
+
+      console.log(
+        `[VIP] getProducts: prepaid=${results[0].length}, game-feature=${results[1].length}, total=${unique.length}`
+      );
+
+      return unique;
     } catch (error) {
       throw new ProviderError(
         `Failed to get VIP products: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -162,9 +188,16 @@ export class VipResellerAdapter implements IProviderPort {
       }
 
       const data = await response.json();
+      const vipStatus: string = data.data?.status ?? "";
+
+      const status =
+        vipStatus === "success" ? "success"
+        : vipStatus === "pending" ? "pending"
+        : "failed";
 
       return {
-        success: data.result === true && data.data?.status === "success",
+        success: data.result === true && status === "success",
+        status,
         transactionId: data.data?.trx_id || refId,
         serialNumber: data.data?.sn,
         message: data.data?.message || data.message || "Transaction processed",
@@ -173,6 +206,50 @@ export class VipResellerAdapter implements IProviderPort {
     } catch (error) {
       throw new ProviderError(
         `Failed to purchase from VIP: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "VIP_RESELLER"
+      );
+    }
+  }
+
+  async checkStatus(providerRef: string): Promise<ProviderPurchaseResponse> {
+    // VIP Reseller status check: POST /prepaid with type=status and ref_id
+    try {
+      const sign = this.sign || this.generateSignature();
+
+      const response = await fetch(`${this.baseUrl}/prepaid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          key: this.apiKey,
+          sign,
+          type: "status",
+          ref_id: providerRef,
+        }).toString(),
+      });
+
+      if (!response.ok) {
+        throw new ProviderError(`VIP checkStatus error: ${response.statusText}`, "VIP_RESELLER");
+      }
+
+      const data = await response.json();
+      const vipStatus: string = data.data?.status ?? "";
+
+      const status =
+        vipStatus === "success" ? "success"
+        : vipStatus === "pending" ? "pending"
+        : "failed";
+
+      return {
+        success: data.result === true && status === "success",
+        status,
+        transactionId: data.data?.trx_id || providerRef,
+        serialNumber: data.data?.sn,
+        message: data.data?.message || data.message || vipStatus,
+        rawResponse: data,
+      };
+    } catch (error) {
+      throw new ProviderError(
+        `Failed to checkStatus from VIP: ${error instanceof Error ? error.message : "Unknown error"}`,
         "VIP_RESELLER"
       );
     }

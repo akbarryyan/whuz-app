@@ -456,18 +456,30 @@ export default function ProductsPage() {
             ) : (
               <>
                 <div className="mt-5 overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col className="w-[10%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[22%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[7%]" />
+                      <col className="w-[4%]" />
+                    </colgroup>
                     <thead>
                       <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-                        <th className="pb-3 font-medium">Provider</th>
-                        <th className="pb-3 font-medium">Kode</th>
-                        <th className="pb-3 font-medium">Nama Produk</th>
-                        <th className="pb-3 font-medium">Kategori</th>
-                        <th className="pb-3 font-medium">Brand</th>
-                        <th className="pb-3 font-medium">Harga Provider</th>
-                        <th className="pb-3 font-medium">Margin</th>
-                        <th className="pb-3 font-medium">Harga Jual</th>
-                        <th className="pb-3 font-medium">Status</th>
+                        <th className="pb-3 pr-3 font-medium">Provider</th>
+                        <th className="pb-3 pr-3 font-medium">Kode</th>
+                        <th className="pb-3 pr-3 font-medium">Nama Produk</th>
+                        <th className="pb-3 pr-3 font-medium">Kategori</th>
+                        <th className="pb-3 pr-3 font-medium">Brand</th>
+                        <th className="pb-3 pr-3 font-medium">Harga Provider</th>
+                        <th className="pb-3 pr-3 font-medium">Margin</th>
+                        <th className="pb-3 pr-3 font-medium">Harga Jual</th>
+                        <th className="pb-3 pr-3 font-medium">Status</th>
                         <th className="pb-3 font-medium">Aksi</th>
                       </tr>
                     </thead>
@@ -477,30 +489,32 @@ export default function ProductsPage() {
                           key={product.id}
                           className="border-b border-slate-50 text-sm transition hover:bg-slate-50"
                         >
-                          <td className="py-3">
-                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-600">
+                          <td className="py-3 pr-3">
+                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-600 whitespace-nowrap">
                               {product.provider.replace("_", " ")}
                             </span>
                           </td>
-                          <td className="py-3 font-mono text-xs text-slate-600">
+                          <td className="py-3 pr-3 font-mono text-xs text-slate-600 truncate max-w-0" title={product.providerCode}>
                             {product.providerCode}
                           </td>
-                          <td className="py-3 font-medium text-slate-800">{product.name}</td>
-                          <td className="py-3 text-slate-600">{product.category}</td>
-                          <td className="py-3 text-slate-600">{product.brand}</td>
-                          <td className="py-3 text-slate-600">
+                          <td className="py-3 pr-3 font-medium text-slate-800 max-w-0">
+                            <span className="block truncate" title={product.name}>{product.name}</span>
+                          </td>
+                          <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.category}>{product.category}</td>
+                          <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.brand}>{product.brand}</td>
+                          <td className="py-3 pr-3 text-slate-600 whitespace-nowrap">
                             {formatCurrency(product.providerPrice)}
                           </td>
-                          <td className="py-3 font-medium text-emerald-600">
+                          <td className="py-3 pr-3 font-medium text-emerald-600 whitespace-nowrap">
                             +{formatCurrency(product.margin)}
                           </td>
-                          <td className="py-3 font-semibold text-slate-800">
+                          <td className="py-3 pr-3 font-semibold text-slate-800 whitespace-nowrap">
                             {formatCurrency(product.sellingPrice)}
                           </td>
-                          <td className="py-3">
-                            <div className="flex items-center gap-2">
+                          <td className="py-3 pr-3">
+                            <div className="flex flex-col gap-1">
                               <span
-                                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium text-center ${
                                   product.isActive
                                     ? "bg-emerald-100 text-emerald-600"
                                     : "bg-slate-100 text-slate-600"
@@ -509,7 +523,7 @@ export default function ProductsPage() {
                                 {product.isActive ? "Aktif" : "Nonaktif"}
                               </span>
                               <span
-                                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium text-center ${
                                   product.stock
                                     ? "bg-blue-100 text-blue-600"
                                     : "bg-rose-100 text-rose-600"
@@ -520,22 +534,22 @@ export default function ProductsPage() {
                             </div>
                           </td>
                           <td className="py-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-1">
                               <button
                                 onClick={() => openEditModal(product)}
-                                className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-200"
+                                className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-200"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => toggleProductStatus(product)}
-                                className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                                className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
                                   product.isActive
                                     ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                     : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
                                 }`}
                               >
-                                {product.isActive ? "Nonaktifkan" : "Aktifkan"}
+                                {product.isActive ? "Nonaktif" : "Aktifkan"}
                               </button>
                             </div>
                           </td>
