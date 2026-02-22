@@ -86,6 +86,7 @@ export default function BrandDetailPage({
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+  const [pgMethods, setPgMethods] = useState<{ id: string; key: string; label: string; group: string; imageUrl: string | null }[]>([]);
 
   // Resolve params + fetch products in a single effect
   useEffect(() => {
@@ -130,6 +131,14 @@ export default function BrandDetailPage({
     loadData();
     return () => { cancelled = true; };
   }, [params]);
+
+  // Fetch payment methods from DB
+  useEffect(() => {
+    fetch("/api/payment-methods")
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setPgMethods(d.data); })
+      .catch(() => {});
+  }, []);
 
   // Fetch wallet balance once
   useEffect(() => {
@@ -791,43 +800,47 @@ export default function BrandDetailPage({
             })()}
 
             {/* Metode lainnya (Pakasir) — opens bottom sheet */}
-            <button
-              onClick={() => setShowPaymentSheet(true)}
-              className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-1.5 transition-all ${
-                paymentMethod === "PAYMENT_GATEWAY"
-                  ? "border-purple-500 bg-purple-50"
-                  : "border-[#003D99] bg-white hover:border-purple-200"
-              }`}
-            >
-              <div className="w-9 h-9 text-[#003D99] flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-[#003D99]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                {paymentMethod === "PAYMENT_GATEWAY" ? (
-                  <>
-                    <p className="text-xs text-slate-400 leading-none mb-0.5">Metode Pembayaran</p>
-                    <p className="text-sm font-semibold text-purple-700 truncate">
-                      {({
-                        qris: "QRIS",
-                        bni_va: "BNI Virtual Account",
-                        bri_va: "BRI Virtual Account",
-                        cimb_niaga_va: "CIMB Niaga VA",
-                        maybank_va: "Maybank VA",
-                        permata_va: "Permata VA",
-                        bnc_va: "Bank Neo VA",
-                      } as Record<string, string>)[pgMethod] ?? pgMethod}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[13px] font-semibold text-[#003D99]">Metode Pembayaran Lainnya</p>
-                )}
-              </div>
-              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            {(() => {
+              const activePg = paymentMethod === "PAYMENT_GATEWAY" ? pgMethods.find((m) => m.key === pgMethod) : null;
+              const abbr = activePg ? activePg.key.replace(/_va$/, "").toUpperCase().slice(0, 4) : null;
+              return (
+                <button
+                  onClick={() => setShowPaymentSheet(true)}
+                  className={`w-full flex items-center gap-3 rounded-xl border-2 px-3.5 py-3 transition-all ${
+                    paymentMethod === "PAYMENT_GATEWAY"
+                      ? "border-purple-500 bg-purple-50"
+                      : "border-slate-200 bg-white hover:border-purple-200"
+                  }`}
+                >
+                  {/* Icon — show selected method logo or generic icon */}
+                  <div className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {activePg?.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={activePg.imageUrl} alt={activePg.label} className="w-full h-full object-contain p-1" />
+                    ) : abbr ? (
+                      <span className="text-[9px] font-black text-slate-600">{abbr}</span>
+                    ) : (
+                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    {activePg ? (
+                      <>
+                        <p className="text-[10px] text-slate-400 leading-none mb-0.5">Metode Pembayaran</p>
+                        <p className="text-[13px] font-bold text-slate-800 truncate">{activePg.label}</p>
+                      </>
+                    ) : (
+                      <p className="text-[13px] font-semibold text-slate-700">Metode Pembayaran Lainnya</p>
+                    )}
+                  </div>
+                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              );
+            })()}
           </div>
 
           {/* == How to Order Info == */}
@@ -989,7 +1002,7 @@ export default function BrandDetailPage({
             </div>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
-              <p className="text-base font-bold text-slate-800">Metode Pembayaran Lainnya</p>
+              <p className="text-[14px] font-bold text-[#003D99]">Metode Pembayaran Lainnya</p>
               <button
                 onClick={() => setShowPaymentSheet(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
@@ -1008,82 +1021,99 @@ export default function BrandDetailPage({
                 Biaya Total belanja adalah jumlah dari total pembelian, biaya layanan fitur, dan biaya admin pembayaran
               </p>
             </div>
-            {/* Scrollable list */}
-            <div className="overflow-y-auto flex-1 px-4 pb-6">
-              {/* === E-Wallet & QRIS === */}
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">E-Wallet &amp; QRIS</p>
-              {([
-                { key: "qris", label: "QRIS", icon: (
-                  <svg className="w-6 h-5" viewBox="0 0 24 20" fill="none" stroke="currentColor">
-                    <rect x="1" y="1" width="8" height="8" rx="1" strokeWidth={2} />
-                    <rect x="15" y="1" width="8" height="8" rx="1" strokeWidth={2} />
-                    <rect x="1" y="12" width="8" height="8" rx="1" strokeWidth={2} />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12h3v3M21 12v-.01M15 15v3h3M21 17v3h-3" />
-                  </svg>
-                )},
-              ] as { key: string; label: string; icon: React.ReactNode }[]).map((m) => {
-                const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
-                const price = selectedProduct?.sellingPrice ?? 0;
-                return (
-                  <button
-                    key={m.key}
-                    onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
-                    className="w-full flex items-center gap-3 py-3 border-b border-slate-100"
-                  >
-                    <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 text-slate-700">
-                      {m.icon}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-semibold text-slate-800">{m.label}</p>
-                    </div>
-                    {price > 0 && (
-                      <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
-                    )}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
-                    }`}>
-                      {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                    </div>
-                  </button>
-                );
-              })}
+            {/* QRIS section — fixed, does NOT scroll */}
+            {(() => {
+              const qrisItems = pgMethods.filter((m) => m.group === "QRIS");
+              if (qrisItems.length === 0) return null;
+              return (
+                <div className="px-4 flex-shrink-0 border-b border-slate-100">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide pt-3 pb-2">E-Wallet &amp; QRIS</p>
+                  {qrisItems.map((m) => {
+                    const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
+                    const price = selectedProduct?.sellingPrice ?? 0;
+                    const abbr = m.key.replace(/_va$/, "").toUpperCase().slice(0, 4);
+                    return (
+                      <button
+                        key={m.key}
+                        onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
+                        className="w-full flex items-center gap-3 py-3 border-b border-slate-100 last:border-b-0"
+                      >
+                        <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {m.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.imageUrl} alt={m.label} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 20" fill="none" stroke="currentColor">
+                              <rect x="1" y="1" width="8" height="8" rx="1" strokeWidth={2} />
+                              <rect x="15" y="1" width="8" height="8" rx="1" strokeWidth={2} />
+                              <rect x="1" y="12" width="8" height="8" rx="1" strokeWidth={2} />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12h3v3M21 12v-.01M15 15v3h3M21 17v3h-3" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                        </div>
+                        {price > 0 && (
+                          <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                        )}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
+                        }`}>
+                          {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
-              {/* === Virtual Account === */}
-              <p className="text-sm font-bold text-slate-700 mt-4 mb-2">Virtual Account</p>
-              {([
-                { key: "bni_va", label: "BNI Virtual Account", abbr: "BNI", bg: "bg-orange-500" },
-                { key: "bri_va", label: "BRI Virtual Account", abbr: "BRI", bg: "bg-blue-600" },
-                { key: "cimb_niaga_va", label: "CIMB Niaga VA", abbr: "CIMB", bg: "bg-red-600" },
-                { key: "maybank_va", label: "Maybank VA", abbr: "MAY", bg: "bg-yellow-400" },
-                { key: "permata_va", label: "Permata VA", abbr: "PRM", bg: "bg-purple-500" },
-                { key: "bnc_va", label: "Bank Neo VA", abbr: "NEO", bg: "bg-teal-500" },
-              ] as { key: string; label: string; abbr: string; bg: string }[]).map((m) => {
-                const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
-                const price = selectedProduct?.sellingPrice ?? 0;
-                return (
-                  <button
-                    key={m.key}
-                    onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
-                    className="w-full flex items-center gap-3 py-3 border-b border-slate-100"
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${m.bg} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-white text-[10px] font-black">{m.abbr}</span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-semibold text-slate-800">{m.label}</p>
-                    </div>
-                    {price > 0 && (
-                      <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
-                    )}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
-                    }`}>
-                      {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Virtual Account section — scrollable */}
+            {(() => {
+              const vaItems = pgMethods.filter((m) => m.group === "VIRTUAL_ACCOUNT");
+              if (vaItems.length === 0) return <div className="flex-1" />;
+              return (
+                <div
+                  className="flex-1 overflow-y-auto px-4 pb-6"
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "#e2e8f0 transparent" }}
+                >
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide pt-3 pb-2">Virtual Account</p>
+                  {vaItems.map((m) => {
+                    const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
+                    const price = selectedProduct?.sellingPrice ?? 0;
+                    const abbr = m.key.replace(/_va$/, "").toUpperCase().slice(0, 4);
+                    return (
+                      <button
+                        key={m.key}
+                        onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
+                        className="w-full flex items-center gap-3 py-3 border-b border-slate-100 last:border-b-0"
+                      >
+                        <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {m.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.imageUrl} alt={m.label} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <span className="text-[9px] font-black text-slate-600">{abbr}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                        </div>
+                        {price > 0 && (
+                          <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                        )}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
+                        }`}>
+                          {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

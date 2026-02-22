@@ -225,6 +225,25 @@ model WebhookEvent {
 }
 
 // ============================================
+// PAYMENT METHOD CONFIG (managed by admin)
+// ============================================
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  key       String   @unique  // e.g. qris, bni_va, bri_va
+  label     String            // e.g. QRIS, BNI Virtual Account
+  group     String   @default("OTHER") // QRIS, VIRTUAL_ACCOUNT
+  imageUrl  String?  @db.Text
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("payment_methods")
+}
+
+// ============================================
 // BRAND METADATA (managed by admin, survives re-sync)
 // ============================================
 
