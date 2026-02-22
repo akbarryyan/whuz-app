@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import { useToast } from "@/hooks/useToast";
@@ -28,8 +28,18 @@ const BRAND_IMAGES: Record<string, string> = {
   "Blood Strike": "https://i.ibb.co.com/LNjtGZy/blood-strike.png",
 };
 
-// Brands that need Zone ID (ML-like games)
-const BRANDS_WITH_ZONE: string[] = ["Mobile Legends", "Magic Chess"];
+// InputFieldDef — matches admin/brands/page.tsx
+interface InputFieldDef {
+  key: string;
+  label: string;
+  placeholder: string;
+  required: boolean;
+  width: "flex" | "fixed";
+}
+
+const DEFAULT_INPUT_FIELDS: InputFieldDef[] = [
+  { key: "userId", label: "User ID", placeholder: "Masukkan User ID", required: true, width: "flex" },
+];
 
 interface Product {
   id: string;
@@ -67,8 +77,15 @@ export default function BrandDetailPage({
   // Selection & input state
   const [activeType, setActiveType] = useState<string>("Semua");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [userId, setUserId] = useState("");
-  const [zoneId, setZoneId] = useState("");
+  const [inputFields, setInputFields] = useState<InputFieldDef[]>(DEFAULT_INPUT_FIELDS);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState<"WALLET" | "PAYMENT_GATEWAY" | null>(null);
+  const [pgMethod, setPgMethod] = useState<string>("qris");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
 
   // Resolve params + fetch products in a single effect
   useEffect(() => {
@@ -89,6 +106,15 @@ export default function BrandDetailPage({
           setBrandImageUrl(data.imageUrl ?? null);
           setProducts(data.data);
           setTypes(data.types);
+          const fields: InputFieldDef[] =
+            data.inputFields && data.inputFields.length > 0
+              ? data.inputFields
+              : DEFAULT_INPUT_FIELDS;
+          setInputFields(fields);
+          // Initialize all field values to empty string
+          const initValues: Record<string, string> = {};
+          for (const f of fields) initValues[f.key] = "";
+          setFieldValues(initValues);
         } else {
           setError(data.error || "Brand tidak ditemukan.");
         }
@@ -105,14 +131,27 @@ export default function BrandDetailPage({
     return () => { cancelled = true; };
   }, [params]);
 
+  // Fetch wallet balance once
+  useEffect(() => {
+    setWalletLoading(true);
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.isLoggedIn && d.user?.balance != null) {
+          setWalletBalance(Number(d.user.balance));
+        } else {
+          setWalletBalance(null);
+        }
+      })
+      .catch(() => setWalletBalance(null))
+      .finally(() => setWalletLoading(false));
+  }, []);
+
   // Filtered products by active type
   const filteredProducts = useMemo(() => {
     if (activeType === "Semua") return products;
     return products.filter((p) => p.type === activeType);
   }, [products, activeType]);
-
-  // Does this brand need zone ID?
-  const needsZone = BRANDS_WITH_ZONE.includes(brandName);
 
   // Brand image or initials — prefer DB imageUrl, fallback to hardcoded map
   const brandImage = brandImageUrl ?? BRAND_IMAGES[brandName] ?? null;
@@ -128,25 +167,25 @@ export default function BrandDetailPage({
   // Description expand state
   const [showDescription, setShowDescription] = useState(false);
 
-  // Can proceed to checkout?
-  const canCheckout = selectedProduct && userId.trim().length >= 3;
+  // Can proceed to checkout? — all required fields filled + product selected + payment method chosen
+  const canCheckout =
+    !!selectedProduct &&
+    !!paymentMethod &&
+    inputFields.every((f) => !f.required || (fieldValues[f.key]?.trim().length ?? 0) >= 2);
 
   const handleCheckout = () => {
     if (!selectedProduct) {
       toast.error("Pilih produk terlebih dahulu.");
       return;
     }
-    if (!userId.trim() || userId.trim().length < 3) {
-      toast.error("Masukkan User ID yang valid.");
-      return;
-    }
-    if (needsZone && !zoneId.trim()) {
-      toast.error("Masukkan Zone ID.");
-      return;
+    for (const f of inputFields) {
+      if (f.required && !fieldValues[f.key]?.trim()) {
+        toast.error(`Masukkan ${f.label} yang valid.`);
+        return;
+      }
     }
 
     // TODO: Navigate to checkout page when checkout flow is built
-    // For now, store selection in sessionStorage and show toast
     const checkoutData = {
       productId: selectedProduct.id,
       productName: selectedProduct.name,
@@ -154,10 +193,14 @@ export default function BrandDetailPage({
       brand: brandName,
       brandSlug,
       sellingPrice: selectedProduct.sellingPrice,
-      userId: userId.trim(),
-      zoneId: needsZone ? zoneId.trim() : undefined,
+      fields: Object.fromEntries(inputFields.map((f) => [f.key, fieldValues[f.key]?.trim() ?? ""])),
     };
-    sessionStorage.setItem("whuz_checkout", JSON.stringify(checkoutData));
+    const checkoutPayload = {
+      ...checkoutData,
+      paymentMethod,
+      ...(paymentMethod === "PAYMENT_GATEWAY" ? { paymentGatewayMethod: pgMethod } : {}),
+    };
+    sessionStorage.setItem("whuz_checkout", JSON.stringify(checkoutPayload));
     toast.success("Produk dipilih! Checkout segera hadir.");
   };
 
@@ -340,7 +383,7 @@ export default function BrandDetailPage({
         <div className="h-[60px]" />
 
         {/* ---- Main Content ---- */}
-        <div className="flex-1 bg-slate-50 pb-44">
+        <div className="flex-1 bg-slate-50 pb-12">
           <BannerCarousel />
 
           {/* == Brand Hero Section == */}
@@ -460,11 +503,9 @@ export default function BrandDetailPage({
                 {/* Steps */}
                 <ol className="flex flex-col gap-0.5 list-none">
                   {[
-                    needsZone
-                      ? `Pilih produk ${brandName} sesuai kebutuhan`
-                      : `Pilih produk ${brandName} sesuai kebutuhan`,
+                    `Pilih produk ${brandName} sesuai kebutuhan`,
                     "Pilih Metode Pembayaran",
-                    needsZone ? "Masukkan User ID dan Zone ID" : "Masukkan User ID kamu",
+                    `Masukkan ${inputFields.map((f) => f.label).join(" dan ")} kamu`,
                     `Cek total bayar, lalu klik "Bayar"`,
                     "Selesai",
                   ].map((step, i) => (
@@ -514,62 +555,33 @@ export default function BrandDetailPage({
             </div>
           </div>
 
-          {/* == User ID Input Section == */}
+          {/* == Dynamic Input Fields Section == */}
           <div className="px-4 py-4 bg-white border-b border-slate-100">
             <div className="flex items-center gap-2 mb-3">
-              <svg
-                className="w-4 h-4 text-purple-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="text-sm font-semibold text-slate-700">
-                Masukkan Data Akun
-              </span>
+              <span className="text-sm font-semibold text-slate-700">Masukkan Data Akun</span>
             </div>
 
-            <div
-              className={`flex gap-2 ${needsZone ? "" : "flex-col"}`}
-            >
-              <div className={`${needsZone ? "flex-1" : "w-full"}`}>
-                <label className="text-xs text-slate-500 font-medium mb-1 block">
-                  User ID
-                </label>
-                <input
-                  type="text"
-                  placeholder="Masukkan User ID"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
-                />
-              </div>
-
-              {needsZone && (
-                <div className="w-28">
-                  <label className="text-xs text-slate-500 font-medium mb-1 block">
-                    Zone ID
-                  </label>
+            <div className={inputFields.length > 1 ? "flex flex-col gap-2" : "flex gap-2"}>
+              {inputFields.map((field) => (
+                <div key={field.key} className={inputFields.length > 1 ? "w-full" : field.width === "fixed" ? "w-28 flex-shrink-0" : "flex-1 min-w-[120px]"}>
+                  <label className="text-xs text-slate-500 font-medium mb-1 block">{field.label}</label>
                   <input
                     type="text"
-                    placeholder="Zone ID"
-                    value={zoneId}
-                    onChange={(e) => setZoneId(e.target.value)}
+                    placeholder={field.placeholder}
+                    value={fieldValues[field.key] ?? ""}
+                    onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
                   />
                 </div>
-              )}
+              ))}
             </div>
 
             <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
-              Pastikan User ID {needsZone ? "dan Zone ID " : ""}yang kamu
-              masukkan sudah benar. Kesalahan input bukan tanggung jawab kami.
+              Pastikan {inputFields.map((f) => f.label).join(" dan ")} yang kamu masukkan sudah benar.
+              Kesalahan input bukan tanggung jawab kami.
             </p>
           </div>
 
@@ -697,6 +709,127 @@ export default function BrandDetailPage({
             )}
           </div>
 
+          {/* == Payment Method == */}
+          <div className="px-4 py-4 bg-white border-b border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span className="text-sm font-semibold text-slate-700">Metode Pembayaran</span>
+            </div>
+
+            {/* Saldo WhuzPay — inline */}
+            {(() => {
+              const isLoggedIn = !walletLoading && walletBalance !== null;
+              const isDisabled = !isLoggedIn;
+              return (
+                <div className={`relative rounded-xl border mb-3 overflow-hidden transition-all ${
+                  isDisabled ? "border-slate-200 bg-slate-50 opacity-60" : "border-slate-200 bg-white"
+                }`}>
+                  {/* Gratis Biaya Admin badge */}
+                  <div className="absolute top-0 right-0">
+                    <span className="block bg-green-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-bl-xl rounded-tr-xl tracking-wide">
+                      Gratis Biaya Admin
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (isDisabled) return;
+                      setPaymentMethod(paymentMethod === "WALLET" ? null : "WALLET");
+                    }}
+                    disabled={isDisabled}
+                    className={`w-full flex items-center gap-3 px-3.5 pt-7 pb-3 ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    {/* Icon */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isDisabled ? "bg-slate-200" : "bg-purple-100"
+                    }`}>
+                      <svg className={`w-4 h-4 ${isDisabled ? "text-slate-400" : "text-purple-600"}`} viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    </div>
+                    {/* Text */}
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-[12px] text-slate-500">
+                        Saldo Pembeli:{" "}
+                        <span className={
+                          isDisabled
+                            ? "text-slate-400 font-medium"
+                            : walletBalance !== null
+                            ? "text-slate-700 font-semibold"
+                            : "text-purple-500 font-medium"
+                        }>
+                          {walletLoading
+                            ? "Memuat..."
+                            : walletBalance !== null
+                            ? `Rp ${formatPrice(walletBalance)}`
+                            : "Login untuk lihat saldo"}
+                        </span>
+                      </p>
+                      {isDisabled && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">Login terlebih dahulu untuk menggunakan saldo</p>
+                      )}
+                      {!isDisabled && selectedProduct && walletBalance !== null && walletBalance < selectedProduct.sellingPrice && (
+                        <p className="text-[10px] text-rose-500 mt-0.5">Saldo tidak cukup</p>
+                      )}
+                    </div>
+                    {/* Toggle switch */}
+                    <div
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                        isDisabled ? "bg-slate-200" : paymentMethod === "WALLET" ? "bg-purple-500" : "bg-slate-200"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${
+                          isDisabled ? "bg-slate-300 translate-x-1" : paymentMethod === "WALLET" ? "bg-white translate-x-6" : "bg-white translate-x-1"
+                        }`}
+                      />
+                    </div>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Metode lainnya (Pakasir) — opens bottom sheet */}
+            <button
+              onClick={() => setShowPaymentSheet(true)}
+              className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-1.5 transition-all ${
+                paymentMethod === "PAYMENT_GATEWAY"
+                  ? "border-purple-500 bg-purple-50"
+                  : "border-[#003D99] bg-white hover:border-purple-200"
+              }`}
+            >
+              <div className="w-9 h-9 text-[#003D99] flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-[#003D99]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                {paymentMethod === "PAYMENT_GATEWAY" ? (
+                  <>
+                    <p className="text-xs text-slate-400 leading-none mb-0.5">Metode Pembayaran</p>
+                    <p className="text-sm font-semibold text-purple-700 truncate">
+                      {({
+                        qris: "QRIS",
+                        bni_va: "BNI Virtual Account",
+                        bri_va: "BRI Virtual Account",
+                        cimb_niaga_va: "CIMB Niaga VA",
+                        maybank_va: "Maybank VA",
+                        permata_va: "Permata VA",
+                        bnc_va: "Bank Neo VA",
+                      } as Record<string, string>)[pgMethod] ?? pgMethod}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[13px] font-semibold text-[#003D99]">Metode Pembayaran Lainnya</p>
+                )}
+              </div>
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
           {/* == How to Order Info == */}
           <div className="px-4 py-4">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
@@ -720,7 +853,7 @@ export default function BrandDetailPage({
               </div>
               <div className="flex flex-col gap-2">
                 {[
-                  "Masukkan User ID kamu di atas",
+                  `Masukkan ${inputFields.map((f) => f.label).join(" dan ")} kamu di atas`,
                   "Pilih nominal/produk yang diinginkan",
                   "Klik tombol Beli Sekarang",
                   "Selesaikan pembayaran",
@@ -736,6 +869,220 @@ export default function BrandDetailPage({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* == Footer == */}
+          <footer className="bg-white border-t border-slate-100 px-5 pt-6 pb-6">
+            {/* Logo + tagline */}
+            <div className="mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://www.vcgamers.com/image/footer-logo-vcg.png"
+                alt="WhuzPay"
+                className="h-7 w-auto object-contain mb-2"
+              />
+              <p className="text-[11px] text-blue-600 font-semibold leading-snug">
+                Top Up Game Murah #AntiScam? VCGamers Aja!
+              </p>
+            </div>
+
+            {/* Nav links */}
+            <div className="flex gap-4 mb-4">
+              <button className="text-[12px] text-slate-500 hover:text-slate-700 transition-colors">
+                Tentang Kami
+              </button>
+              <button className="text-[12px] text-slate-500 hover:text-slate-700 transition-colors">
+                Berita Game
+              </button>
+            </div>
+
+            {/* Help card */}
+            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 mb-5">
+              <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-purple-600 text-lg font-bold">?</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-slate-500 leading-none mb-0.5">Punya Pertanyaan?</p>
+                <p className="text-[12px] text-purple-600 font-bold">
+                  Cek Pusat Bantuan{" "}
+                  <span className="text-purple-400">&rsaquo;</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Payment methods */}
+            <div className="mb-5">
+              <p className="text-[11px] font-bold text-slate-700 mb-2.5">Pembayaran Lengkap</p>
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* GoPay */}
+                <div className="flex items-center gap-1.5 bg-[#00AED6] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                  <span>GoPay</span>
+                </div>
+                {/* DANA */}
+                <div className="flex items-center gap-1.5 bg-[#118EEA] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="2" y="6" width="20" height="12" rx="3" />
+                  </svg>
+                  <span>DANA</span>
+                </div>
+                {/* ShopeePay */}
+                <div className="flex items-center gap-1.5 bg-[#EE4D2D] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 2h12l2 5H4z" /><rect x="3" y="7" width="18" height="14" rx="2" />
+                  </svg>
+                  <span>Shopee</span>
+                </div>
+                {/* OVO */}
+                <div className="flex items-center gap-1.5 bg-[#4C3494] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                  <span>OVO</span>
+                </div>
+                {/* +more */}
+                <div className="flex items-center text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-200 px-2.5 py-1.5 rounded-lg">
+                  +20 Lainnya
+                </div>
+              </div>
+            </div>
+
+            {/* Copyright */}
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Copyright ©2019 - 2026
+              </p>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                PT. Sotta Teknologi Indonesia - VCGamers All Right Reserved
+              </p>
+            </div>
+          </footer>
+        </div>
+
+        {/* ---- Payment Bottom Sheet ---- */}
+        <div
+          className={`fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 transition-all duration-300 ${
+            showPaymentSheet ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+          style={{ bottom: 0, height: "100%" }}
+        >
+          {/* Backdrop */}
+          <div
+            className={`absolute inset-0 bg-black transition-opacity duration-300 ${
+              showPaymentSheet ? "opacity-40" : "opacity-0"
+            }`}
+            onClick={() => setShowPaymentSheet(false)}
+          />
+          {/* Sheet */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+              showPaymentSheet ? "translate-y-0" : "translate-y-full"
+            }`}
+            style={{ maxHeight: "78vh" }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-300" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
+              <p className="text-base font-bold text-slate-800">Metode Pembayaran Lainnya</p>
+              <button
+                onClick={() => setShowPaymentSheet(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+              >
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Info banner */}
+            <div className="mx-4 mb-3 flex gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-3.5 py-2.5 flex-shrink-0">
+              <div className="w-4 h-4 rounded-full border-2 border-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-blue-500 text-[9px] font-bold">i</span>
+              </div>
+              <p className="text-[11px] text-blue-700 leading-relaxed">
+                Biaya Total belanja adalah jumlah dari total pembelian, biaya layanan fitur, dan biaya admin pembayaran
+              </p>
+            </div>
+            {/* Scrollable list */}
+            <div className="overflow-y-auto flex-1 px-4 pb-6">
+              {/* === E-Wallet & QRIS === */}
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">E-Wallet &amp; QRIS</p>
+              {([
+                { key: "qris", label: "QRIS", icon: (
+                  <svg className="w-6 h-5" viewBox="0 0 24 20" fill="none" stroke="currentColor">
+                    <rect x="1" y="1" width="8" height="8" rx="1" strokeWidth={2} />
+                    <rect x="15" y="1" width="8" height="8" rx="1" strokeWidth={2} />
+                    <rect x="1" y="12" width="8" height="8" rx="1" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12h3v3M21 12v-.01M15 15v3h3M21 17v3h-3" />
+                  </svg>
+                )},
+              ] as { key: string; label: string; icon: React.ReactNode }[]).map((m) => {
+                const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
+                const price = selectedProduct?.sellingPrice ?? 0;
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
+                    className="w-full flex items-center gap-3 py-3 border-b border-slate-100"
+                  >
+                    <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 text-slate-700">
+                      {m.icon}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                    </div>
+                    {price > 0 && (
+                      <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                    )}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
+                    }`}>
+                      {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* === Virtual Account === */}
+              <p className="text-sm font-bold text-slate-700 mt-4 mb-2">Virtual Account</p>
+              {([
+                { key: "bni_va", label: "BNI Virtual Account", abbr: "BNI", bg: "bg-orange-500" },
+                { key: "bri_va", label: "BRI Virtual Account", abbr: "BRI", bg: "bg-blue-600" },
+                { key: "cimb_niaga_va", label: "CIMB Niaga VA", abbr: "CIMB", bg: "bg-red-600" },
+                { key: "maybank_va", label: "Maybank VA", abbr: "MAY", bg: "bg-yellow-400" },
+                { key: "permata_va", label: "Permata VA", abbr: "PRM", bg: "bg-purple-500" },
+                { key: "bnc_va", label: "Bank Neo VA", abbr: "NEO", bg: "bg-teal-500" },
+              ] as { key: string; label: string; abbr: string; bg: string }[]).map((m) => {
+                const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
+                const price = selectedProduct?.sellingPrice ?? 0;
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => { setPaymentMethod("PAYMENT_GATEWAY"); setPgMethod(m.key); setShowPaymentSheet(false); }}
+                    className="w-full flex items-center gap-3 py-3 border-b border-slate-100"
+                  >
+                    <div className={`w-10 h-10 rounded-xl ${m.bg} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-white text-[10px] font-black">{m.abbr}</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                    </div>
+                    {price > 0 && (
+                      <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                    )}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
+                    }`}>
+                      {isActive && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -232,6 +232,7 @@ model BrandMeta {
   id          String   @id @default(cuid())
   brand       String   @unique // Exact brand name matching Product.brand
   imageUrl    String?  @db.Text
+  inputFields Json?    // Array of InputFieldDef: [{key,label,placeholder,required,width}]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

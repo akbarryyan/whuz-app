@@ -19,10 +19,10 @@ export async function GET() {
 
     // Fetch all BrandMeta
     const metas = await prisma.brandMeta.findMany({
-      select: { brand: true, imageUrl: true, updatedAt: true },
+      select: { brand: true, imageUrl: true, inputFields: true, updatedAt: true },
     });
-    const metaMap: Record<string, { imageUrl: string | null; updatedAt: Date }> = {};
-    for (const m of metas) metaMap[m.brand] = { imageUrl: m.imageUrl ?? null, updatedAt: m.updatedAt };
+    const metaMap: Record<string, { imageUrl: string | null; inputFields: any; updatedAt: Date }> = {};
+    for (const m of metas) metaMap[m.brand] = { imageUrl: m.imageUrl ?? null, inputFields: m.inputFields ?? null, updatedAt: m.updatedAt };
 
     const data = productBrands.map((b) => ({
       brand: b.brand,
@@ -32,6 +32,7 @@ export async function GET() {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, ""),
       imageUrl: metaMap[b.brand]?.imageUrl ?? null,
+      inputFields: metaMap[b.brand]?.inputFields ?? null,
       updatedAt: metaMap[b.brand]?.updatedAt ?? null,
     }));
 
@@ -66,6 +67,34 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error("[ADMIN BRANDS PUT ERROR]", error);
     return NextResponse.json({ success: false, error: "Gagal menyimpan data." }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/admin/brands
+ * Upsert inputFields config for a brand
+ * Body: { brand: string, inputFields: InputFieldDef[] }
+ * InputFieldDef: { key: string, label: string, placeholder: string, required: boolean, width?: string }
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { brand, inputFields } = body as { brand: string; inputFields: object[] | null };
+
+    if (!brand || typeof brand !== "string") {
+      return NextResponse.json({ success: false, error: "brand diperlukan." }, { status: 400 });
+    }
+
+    const meta = await prisma.brandMeta.upsert({
+      where: { brand },
+      create: { brand, inputFields: inputFields ?? [] },
+      update: { inputFields: inputFields ?? [] },
+    });
+
+    return NextResponse.json({ success: true, data: meta });
+  } catch (error) {
+    console.error("[ADMIN BRANDS PATCH ERROR]", error);
+    return NextResponse.json({ success: false, error: "Gagal menyimpan konfigurasi." }, { status: 500 });
   }
 }
 
