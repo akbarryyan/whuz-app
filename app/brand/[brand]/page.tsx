@@ -996,10 +996,10 @@ export default function BrandDetailPage({
 
             {/* Nav links */}
             <div className="flex gap-4 mb-4">
-              <button className="text-[12px] text-slate-500 hover:text-slate-700 transition-colors">
+              <button className="text-[12px] font-semibold text-[#6A7389] hover:text-slate-700 transition-colors">
                 Tentang Kami
               </button>
-              <button className="text-[12px] text-slate-500 hover:text-slate-700 transition-colors">
+              <button className="text-[12px] font-semibold text-[#6A7389] hover:text-slate-700 transition-colors">
                 Berita Game
               </button>
             </div>

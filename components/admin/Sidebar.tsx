@@ -55,7 +55,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               { name: "Dashboard", icon: "📊", href: "/admin" },
               { name: "Produk", icon: "🛒", href: "/admin/products" },
               { name: "Brand", icon: "🖼️", href: "/admin/brands" },
-              { name: "Banner", icon: "🎨", href: "/admin/banners" },
               { name: "Flash Sale", icon: "⚡", href: "/admin/flash-sale" },
               { name: "Transaksi", icon: "💳", href: "/admin/transactions" },
               { name: "Laporan", icon: "📈", href: "/admin/reports" },
@@ -95,6 +94,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {[
               { name: "Provider", icon: "🔌", href: "/admin/providers" },
               { name: "Metode Bayar", icon: "💳", href: "/admin/payment-methods" },
+              { name: "Konten", icon: "📝", href: "/admin/home-content" },
               { name: "Test Transaksi", icon: "🧪", href: "/admin/test-transaction" },
               { name: "Member", icon: "👥", href: "/admin/members" },
               { name: "Webhook", icon: "🔗", href: "/admin/webhooks" },

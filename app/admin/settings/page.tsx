@@ -361,19 +361,21 @@ export default function SettingsPage() {
                       <button
                         onClick={() => toggleMode(provider, effectiveMode)}
                         disabled={isSaving}
-                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+                        role="switch"
+                        aria-checked={isReal}
+                        aria-label={`Toggle ${provider.label} mode`}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
                           isReal ? "bg-green-500" : "bg-slate-300"
                         }`}
-                        aria-label={`Toggle ${provider.label} mode`}
                       >
                         {isSaving ? (
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white shadow">
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent text-slate-400" />
                           </span>
                         ) : (
                           <span
-                            className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                              isReal ? "translate-x-5" : "translate-x-0.5"
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                              isReal ? "translate-x-5" : "translate-x-0"
                             }`}
                           />
                         )}

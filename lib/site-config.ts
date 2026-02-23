@@ -220,3 +220,94 @@ export async function getFlashSaleConfig(): Promise<FlashSaleConfig> {
 export async function setFlashSaleConfig(cfg: FlashSaleConfig): Promise<void> {
   await setSiteConfig("FLASH_SALE_CONFIG", JSON.stringify(cfg));
 }
+
+// ── Home Content (Game Tags + FAQ) ────────────────────────────────────────────
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface GameTag {
+  label: string;
+  href: string;
+}
+
+export interface HomeContent {
+  gameTags: GameTag[];
+  faqs: FaqItem[];
+  aboutText: string;
+}
+
+const DEFAULT_HOME_CONTENT: HomeContent = {
+  gameTags: [
+    { label: "Top Up Free Fire", href: "/brand/free-fire" },
+    { label: "Top Up Mobile Legends", href: "/brand/mobile-legends" },
+    { label: "Top Up Blood Strike", href: "/brand/blood-strike" },
+    { label: "Top Up Free Fire Max", href: "/brand/free-fire-max" },
+    { label: "Top Up PUBG Mobile", href: "/brand/pubg-mobile" },
+    { label: "Top Up Crystal of Atlan", href: "/brand/crystal-of-atlan" },
+    { label: "Top Up Ragnarok M Classic", href: "/brand/ragnarok-m-classic" },
+    { label: "Top Up Undawn", href: "/brand/undawn" },
+    { label: "Top Up Valorant", href: "/brand/valorant" },
+    { label: "Top Up Rbx Rbl", href: "/brand/rbx-rbl" },
+  ],
+  aboutText:
+    "Whuzpay adalah tempat top up game termurah di Indonesia. Seluruh gamer bisa top up, beli voucher game, item in-game, dan produk digital lainnya dengan aman. Bukan hanya bisa membeli voucher game atau top up game murah, aman, dan legal, kamu juga bisa berjualan dengan menjadi seller atau menjadi mitra di Whuzpay dengan nyaman dan pastinya semakin cuan!",
+  faqs: [
+    {
+      question: "Apakah top up game di Whuzpay aman dan legal?",
+      answer: "Whuzpay adalah platform top up game terpercaya di Indonesia. Seluruh transaksi dijamin aman dengan sistem enkripsi terkini. Kami bekerja sama dengan developer game resmi untuk memastikan semua transaksi legal dan sesuai ketentuan.",
+    },
+    {
+      question: "Apa saja keuntungan top up game di Whuzpay?",
+      answer: "Berbagai keuntungan menanti Anda: proses instan 24/7, harga kompetitif dengan promo menarik, metode pembayaran lengkap, customer service responsif, dan sistem keamanan berlapis untuk melindungi data Anda.",
+    },
+    {
+      question: "Berapa lama proses top up selesai?",
+      answer: "Proses top up di Whuzpay sangat cepat, biasanya selesai dalam 1-5 menit setelah pembayaran dikonfirmasi. Untuk beberapa game tertentu, proses bisa lebih cepat yakni kurang dari 1 menit.",
+    },
+    {
+      question: "Metode pembayaran apa saja yang tersedia?",
+      answer: "Kami menyediakan berbagai metode pembayaran untuk kemudahan Anda: Transfer Bank (BCA, BRI, Mandiri, BNI), E-Wallet (GoPay, OVO, DANA, ShopeePay), QRIS, Virtual Account, dan pulsa.",
+    },
+    {
+      question: "Bagaimana cara top up game di Whuzpay?",
+      answer: "Sangat mudah! Pilih game yang ingin di-top up, masukkan ID game Anda, pilih nominal diamond/UC yang diinginkan, pilih metode pembayaran, lakukan pembayaran, dan diamond/UC akan otomatis masuk ke akun game Anda.",
+    },
+    {
+      question: "Apakah ada biaya admin untuk setiap transaksi?",
+      answer: "Tidak ada biaya admin tersembunyi di Whuzpay. Harga yang tertera sudah final dan sudah termasuk semua biaya. Kami berkomitmen untuk transparansi harga kepada semua pelanggan.",
+    },
+    {
+      question: "Bagaimana jika top up saya gagal atau terlambat?",
+      answer: "Jika terjadi kendala, tim customer service kami siap membantu 24/7 melalui WhatsApp atau Live Chat. Kami akan segera memproses pengembalian dana atau menyelesaikan masalah top up Anda dengan cepat.",
+    },
+  ],
+};
+
+export async function getHomeContent(): Promise<HomeContent> {
+  const raw = await getSiteConfig("HOME_CONTENT");
+  if (!raw) return DEFAULT_HOME_CONTENT;
+  try {
+    const parsed = JSON.parse(raw) as Partial<HomeContent>;
+    return {
+      gameTags: Array.isArray(parsed.gameTags) && parsed.gameTags.length > 0 &&
+        typeof (parsed.gameTags as unknown[])[0] === "object"
+        ? parsed.gameTags as { label: string; href: string }[]
+        : DEFAULT_HOME_CONTENT.gameTags,
+      faqs: Array.isArray(parsed.faqs) && parsed.faqs.length > 0
+        ? parsed.faqs
+        : DEFAULT_HOME_CONTENT.faqs,
+      aboutText: typeof parsed.aboutText === "string" && parsed.aboutText.trim()
+        ? parsed.aboutText
+        : DEFAULT_HOME_CONTENT.aboutText,
+    };
+  } catch {
+    return DEFAULT_HOME_CONTENT;
+  }
+}
+
+export async function setHomeContent(content: HomeContent): Promise<void> {
+  await setSiteConfig("HOME_CONTENT", JSON.stringify(content));
+}

@@ -32,7 +32,7 @@ export default function Home() {
   return (
     <div className={`${quicksand.className} flex min-h-screen justify-center bg-[#F5F5F5]`}>
       {/* Mobile Container */}
-      <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col gap-0">
+      <div className="relative w-full max-w-[480px] min-h-screen bg-[#F5F5F5] shadow-2xl flex flex-col gap-0">
         <Header />
         {/* Spacer when header is fixed */}
         {isScrolled && <div className="h-[52px]" />}
@@ -44,8 +44,8 @@ export default function Home() {
         <div className="flex-1 px-4 py-6 bg-slate-50 pb-24">
           <GameGrid category={activeTypeGroup} />
           <AboutFAQ />
-          <Footer />
         </div>
+        <Footer />
 
         <BottomNavigation />
       </div>
