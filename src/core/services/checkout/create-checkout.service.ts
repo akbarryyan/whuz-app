@@ -10,6 +10,7 @@ import {
   GuestWalletError,
   InsufficientBalanceError,
 } from "@/src/core/domain/errors/domain.errors";
+import { getPriceForUser } from "@/lib/pricing";
 
 export interface CheckoutInput {
   productId: string;
@@ -70,9 +71,10 @@ export class CreateCheckoutService {
     if (!product.isActive) throw new ValidationError("Product is not active");
     if (!product.stock) throw new ValidationError("Product is out of stock");
 
-    // ── 3. Compute pricing snapshot ────────────────────────────────────────
-    const basePrice = Number(product.providerPrice);
-    const markup = Number(product.margin);
+    // ── 3. Compute pricing snapshot (tier-aware) ──────────────────────────
+    const tierPricing = await getPriceForUser(input.userId, product);
+    const basePrice = tierPricing?.basePrice ?? Number(product.providerPrice);
+    const markup    = tierPricing?.markup    ?? Number(product.margin);
     const fee = 0; // Gateway fee added after we know method — update after PG call
     const amount = basePrice + markup; // Customer pays: basePrice + markup (fee added below)
 

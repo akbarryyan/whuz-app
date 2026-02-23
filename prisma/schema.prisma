@@ -73,6 +73,29 @@ model Product {
 // ============================================
 // USER & WALLET MODELS
 // ============================================
+// USER TIER (pricing roles)
+// ============================================
+
+model UserTier {
+  id                String   @id @default(cuid())
+  name              String   @unique  // member, reseller, agent
+  label             String            // Member, Reseller, Agent
+  description       String?  @db.VarChar(255)
+  marginMultiplier  Decimal  @db.Decimal(5, 4) @default(1.0000) // 1.0 = full margin, 0.8 = 20% off
+  minOrders         Int      @default(0)        // 0 = manual assignment only; >0 = auto-upgrade threshold
+  isDefault         Boolean  @default(false) // only one can be default
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users             User[]
+
+  @@map("user_tiers")
+}
+
+// ============================================
+// USER & WALLET MODELS
+// ============================================
 
 model User {
   id              String   @id @default(cuid())
@@ -80,16 +103,19 @@ model User {
   phone           String?  @unique
   name            String?
   passwordHash    String?
-  role            String   @default("MEMBER") // MEMBER, ADMIN
+  role            String   @default("MEMBER") // MEMBER, ADMIN — access control
+  tierId          String?  // FK to UserTier — pricing tier (null = use default tier)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  tier            UserTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
   wallet          Wallet?
   orders          Order[]
 
   @@index([email])
   @@index([phone])
+  @@index([tierId])
   @@map("users")
 }
 

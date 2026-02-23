@@ -97,6 +97,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               { name: "Konten", icon: "📝", href: "/admin/home-content" },
               { name: "Test Transaksi", icon: "🧪", href: "/admin/test-transaction" },
               { name: "Member", icon: "👥", href: "/admin/members" },
+              { name: "Tier Harga", icon: "🏷️", href: "/admin/tiers" },
               { name: "Webhook", icon: "🔗", href: "/admin/webhooks" },
               { name: "Pengaturan", icon: "⚙️", href: "/admin/settings" },
             ].map((item) => {

@@ -22,6 +22,17 @@ export async function GET() {
           role: true,
           isActive: true,
           createdAt: true,
+          tier: {
+            select: {
+              id: true,
+              name: true,
+              label: true,
+              minOrders: true,
+              sortOrder: true,
+              marginMultiplier: true,
+              isDefault: true,
+            },
+          },
         },
       }),
       prisma.wallet.findUnique({
@@ -40,6 +51,43 @@ export async function GET() {
       return NextResponse.json({ isLoggedIn: false, user: null });
     }
 
+    // Resolve effective tier (user's tier or fallback to default)
+    let currentTier = user.tier;
+    if (!currentTier) {
+      currentTier = await prisma.userTier.findFirst({
+        where: { isDefault: true },
+        select: {
+          id: true,
+          name: true,
+          label: true,
+          minOrders: true,
+          sortOrder: true,
+          marginMultiplier: true,
+          isDefault: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      });
+    }
+
+    // Find next tier (higher sortOrder, has an auto-upgrade threshold)
+    const nextTier = currentTier
+      ? await prisma.userTier.findFirst({
+          where: {
+            sortOrder: { gt: currentTier.sortOrder },
+            minOrders: { gt: 0 },
+          },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            name: true,
+            label: true,
+            minOrders: true,
+            sortOrder: true,
+            marginMultiplier: true,
+          },
+        })
+      : null;
+
     return NextResponse.json({
       isLoggedIn: true,
       user: {
@@ -57,6 +105,24 @@ export async function GET() {
         totalOrders,
         successOrders,
       },
+      tier: currentTier
+        ? {
+            id: currentTier.id,
+            name: currentTier.name,
+            label: currentTier.label,
+            minOrders: currentTier.minOrders,
+            marginMultiplier: Number(currentTier.marginMultiplier),
+          }
+        : null,
+      nextTier: nextTier
+        ? {
+            id: nextTier.id,
+            name: nextTier.name,
+            label: nextTier.label,
+            minOrders: nextTier.minOrders,
+            marginMultiplier: Number(nextTier.marginMultiplier),
+          }
+        : null,
     });
   } catch (error) {
     console.error("[AUTH ME ERROR]", error);

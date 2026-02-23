@@ -15,8 +15,14 @@ export async function GET() {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
+        isActive: true,
+        createdAt: true,
+        tierId: true,
+        tier: { select: { id: true, name: true, label: true, marginMultiplier: true } },
         wallet: { select: { balance: true } },
+        _count: { select: { orders: true } },
       },
     });
 
@@ -26,11 +32,18 @@ export async function GET() {
         id: u.id,
         name: u.name,
         email: u.email,
+        phone: u.phone,
         role: u.role,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        tierId: u.tierId,
+        tier: u.tier ? { ...u.tier, marginMultiplier: Number(u.tier.marginMultiplier) } : null,
         balance: u.wallet ? Number(u.wallet.balance) : 0,
+        totalOrders: u._count.orders,
       })),
     });
   } catch (error) {
+    console.error("[GET /api/admin/users]", error);
     return NextResponse.json({ success: false, error: "Gagal mengambil data user" }, { status: 500 });
   }
 }

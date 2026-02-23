@@ -148,40 +148,9 @@ export default function LoginPage() {
       {/* Mobile container */}
       <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col">
 
-        {/* ---- Header / Hero ---- */}
-        <div className="bg-gradient-to-br from-purple-700 via-purple-600 to-purple-500 px-6 pt-14 pb-10 relative overflow-hidden">
-          {/* Decorative circles */}
-          <div className="absolute -top-8 -right-8 h-36 w-36 rounded-full bg-white/10" />
-          <div className="absolute top-16 -right-4 h-20 w-20 rounded-full bg-white/5" />
-          <div className="absolute -bottom-6 -left-6 h-28 w-28 rounded-full bg-white/10" />
-
-          {/* Back button */}
-          <button
-            onClick={() => router.back()}
-            className="absolute top-5 left-4 flex items-center gap-1.5 text-white/80 hover:text-white transition-colors text-sm font-medium"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-            </svg>
-            Kembali
-          </button>
-
-          {/* Logo + Tagline */}
-          <div className="relative z-10 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm mb-4 shadow-lg">
-              <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-wide">Whuzpay</h1>
-            <p className="text-purple-200 text-sm mt-1">PPOB &amp; Top Up Game Terpercaya</p>
-          </div>
-        </div>
-
         {/* ---- Form Card ---- */}
-        <div className="flex-1 px-6 -mt-5">
-          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+        <div className="flex-1 px-6 flex items-center">
+          <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
 
             {/* Tab Switcher */}
             <div className="flex border-b border-slate-100">
@@ -562,9 +531,6 @@ export default function LoginPage() {
               )}
             </div>
           </div>
-
-          {/* Bottom spacer */}
-          <div className="h-8" />
         </div>
       </div>
     </div>

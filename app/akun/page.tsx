@@ -6,6 +6,7 @@ import { Quicksand } from "next/font/google";
 import { useToast } from "@/hooks/useToast";
 import { ToastContainer } from "@/components/ui/Toast";
 import BottomNavigation from "@/components/BottomNavigation";
+import AppHeader from "@/components/AppHeader";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -30,6 +31,14 @@ interface StatsData {
   successOrders: number;
 }
 
+interface TierInfo {
+  id: string;
+  name: string;
+  label: string;
+  minOrders: number;
+  marginMultiplier: number;
+}
+
 type ModalType = "edit-profile" | "change-password" | null;
 
 export default function AkunPage() {
@@ -41,6 +50,8 @@ export default function AkunPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [tier, setTier] = useState<TierInfo | null>(null);
+  const [nextTier, setNextTier] = useState<TierInfo | null>(null);
 
   // Modal state
   const [modal, setModal] = useState<ModalType>(null);
@@ -71,6 +82,8 @@ export default function AkunPage() {
         setUser(data.user);
         setWallet(data.wallet ?? { balance: 0 });
         setStats(data.stats ?? { totalOrders: 0, successOrders: 0 });
+        setTier(data.tier ?? null);
+        setNextTier(data.nextTier ?? null);
         setEditForm({
           name: data.user.name ?? "",
           phone: data.user.phone ?? "",
@@ -187,18 +200,30 @@ export default function AkunPage() {
     return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   };
 
+  const getTierBadgeStyle = (tierName: string) => {
+    const n = tierName.toLowerCase();
+    if (n.includes("agent")) return { pill: "bg-amber-400 text-amber-900", bar: "bg-amber-400" };
+    if (n.includes("reseller")) return { pill: "bg-emerald-400 text-emerald-900", bar: "bg-emerald-400" };
+    return { pill: "bg-white/20 text-white", bar: "bg-white" };
+  };
+
   // ===================== LOADING SKELETON =====================
 
   if (isLoading) {
     return (
       <div className={`${quicksand.className} flex min-h-screen justify-center bg-[#F5F5F5]`}>
         <div className="w-full max-w-[480px] min-h-screen bg-white shadow-2xl">
+          {/* ---- Brand Header ---- */}
+          <AppHeader />
+
           {/* Header skeleton */}
-          <div className="bg-gradient-to-br from-purple-700 via-purple-600 to-purple-500 px-6 pt-12 pb-16">
+          <div style={{ backgroundColor: "#003D99" }} className="px-6 pt-16 pb-16">
             <div className="flex flex-col items-center gap-3">
               <div className="w-20 h-20 rounded-full bg-white/20 animate-pulse" />
               <div className="h-5 w-36 rounded-full bg-white/20 animate-pulse" />
               <div className="h-3.5 w-24 rounded-full bg-white/15 animate-pulse" />
+              <div className="h-5 w-20 rounded-full bg-white/20 animate-pulse" />
+              <div className="h-2 w-52 rounded-full bg-white/15 animate-pulse" />
             </div>
           </div>
           <div className="px-5 -mt-8 flex flex-col gap-4">
@@ -299,8 +324,11 @@ export default function AkunPage() {
 
       <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col">
 
+        {/* ---- Brand Header ---- */}
+        <AppHeader onBack={() => router.back()} />
+
         {/* ===== HEADER HERO ===== */}
-        <div className="bg-gradient-to-br from-purple-700 via-purple-600 to-purple-500 px-6 pt-12 pb-20 relative overflow-hidden">
+        <div className="px-6 pt-20 pb-20 relative overflow-hidden" style={{ backgroundColor: "#003D99" }}>
           {/* Decorative circles */}
           <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-white/10" />
           <div className="absolute top-20 -right-4 h-24 w-24 rounded-full bg-white/5" />
@@ -332,6 +360,49 @@ export default function AkunPage() {
             <span className="text-[11px] text-purple-200/80 bg-white/10 px-3 py-1 rounded-full">
               Member sejak {formatDate(user.createdAt)}
             </span>
+
+            {/* ---- Tier badge + progress ---- */}
+            {tier && (() => {
+              const style = getTierBadgeStyle(tier.name);
+              const successCount = stats?.successOrders ?? 0;
+              const progressPct = nextTier
+                ? Math.min(100, Math.round((successCount / nextTier.minOrders) * 100))
+                : 100;
+              const remaining = nextTier ? Math.max(0, nextTier.minOrders - successCount) : 0;
+              return (
+                <div className="flex flex-col items-center gap-2 w-full max-w-[260px]">
+                  {/* Current tier pill */}
+                  <span className={`text-[11px] font-extrabold px-4 py-1 rounded-full tracking-wide shadow ${style.pill}`}>
+                    {tier.label}
+                  </span>
+
+                  {nextTier ? (
+                    <>
+                      {/* Progress bar */}
+                      <div className="w-full">
+                        <div className="flex justify-between text-[10px] text-white/60 mb-1">
+                          <span>{successCount} transaksi sukses</span>
+                          <span>{nextTier.minOrders} untuk {nextTier.label}</span>
+                        </div>
+                        <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${style.bar}`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-white/60 mt-1 text-center">
+                          {remaining > 0
+                            ? `${remaining} transaksi lagi naik ke ${nextTier.label}`
+                            : `Siap naik ke ${nextTier.label}!`}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-white/60">Tier tertinggi 🎉</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -339,7 +410,7 @@ export default function AkunPage() {
         <div className="flex-1 overflow-y-auto px-5 -mt-10 pb-28 flex flex-col gap-4">
 
           {/* ---- WALLET CARD ---- */}
-          <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 relative overflow-hidden">
+          <div className="bg-white rounded-t-3xl shadow-lg border border-slate-100 p-5 relative overflow-hidden">
             {/* background deco */}
             <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-purple-50 to-transparent rounded-r-3xl" />
 

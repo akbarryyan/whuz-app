@@ -3,6 +3,7 @@ import { IQueuePort } from "@/src/core/ports/queue.port";
 import { ProviderFactory } from "@/src/infra/providers/provider.factory";
 import { ProviderType } from "@/src/core/domain/enums/provider.enum";
 import { OrderStatus } from "@/src/core/domain/enums/order.enum";
+import { checkAndUpgradeUserTier } from "@/lib/pricing";
 
 /**
  * ExecuteProviderPurchaseService
@@ -108,6 +109,11 @@ export class ExecuteProviderPurchaseService {
       // Finalize wallet debit ledger (balance was already reduced by HOLD)
       if (order.paymentMethod === "WALLET" && order.userId) {
         await this.orderRepo.finalizeDebitLedger(order.userId, Number(order.amount), orderId);
+      }
+
+      // Auto-upgrade tier based on accumulated success orders
+      if (order.userId) {
+        await checkAndUpgradeUserTier(order.userId);
       }
 
       console.log(`[Execute] Order ${orderId} SUCCESS — SN: ${result.serialNumber}`);
