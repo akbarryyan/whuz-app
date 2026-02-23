@@ -5,20 +5,26 @@ import { useState, useEffect } from "react";
 
 export default function BannerCarousel() {
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [banners, setBanners] = useState<string[]>([]);
 
-  const banners = [
-    "https://cdn.vcgamers.com/homepage/temp/6ae27cb7-270f-4af5-ba8d-e7ad76ff11dd.png",
-    "https://cdn.vcgamers.com/homepage/temp/7d632226-ef2c-4bbe-b36d-9dc41d65b28a.jpg",
-    "https://cdn.vcgamers.com/homepage/temp/69fff244-50fa-42e7-bb3f-f48f8cbd382b.jpg",
-    "https://cdn.vcgamers.com/homepage/temp/06b14be4-8413-468b-8746-3ecb2f1af636.png",
-  ];
-
-  // Auto slide
+  // Fetch banner images from API
   useEffect(() => {
+    fetch("/api/banners")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          setBanners(d.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Auto slide — only when banners are loaded
+  useEffect(() => {
+    if (banners.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 5000);
-
     return () => clearInterval(timer);
   }, [banners.length]);
 
@@ -29,6 +35,15 @@ export default function BannerCarousel() {
   const prevBanner = () => {
     setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
   };
+
+  // Show skeleton while fetching
+  if (banners.length === 0) {
+    return (
+      <div className="relative bg-white mb-0">
+        <div className="relative w-full aspect-[2/1] -mt-10 bg-slate-200 animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-white -mt-0 mb-0">

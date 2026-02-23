@@ -1,56 +1,102 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+
+interface FlashSaleProduct {
+  id: string;
+  name: string;
+  brand: string;
+  brandImage: string;
+  badge: string;
+  discount: string;
+  originalPrice: string;
+  price: string;
+}
+
+interface FlashSaleConfig {
+  isActive: boolean;
+  endTime: string;
+  products: FlashSaleProduct[];
+}
+
+function useCountdown(endTime: string) {
+  const calcRemaining = () => {
+    const diff = Math.max(0, new Date(endTime).getTime() - Date.now());
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    const s = Math.floor((diff % 60_000) / 1_000);
+    return { h, m, s, expired: diff === 0 };
+  };
+  const [remaining, setRemaining] = useState(calcRemaining);
+  useEffect(() => {
+    const t = setInterval(() => setRemaining(calcRemaining()), 1_000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endTime]);
+  return remaining;
+}
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+
+function toBrandSlug(brand: string) {
+  return brand.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
 
 export default function FlashSale() {
-  const products = [
-    {
-      name: "Arena Breakout",
-      badge: "🔥 50 + 6 Bonds 🔥",
-      discount: "92%",
-      originalPrice: "Rp15.500",
-      price: "Rp?.000",
-      image: "🎮",
-    },
-    {
-      name: "Arena Breakout",
-      badge: "🔥 310 + 25 Bonds 🔥",
-      discount: "92%",
-      originalPrice: "Rp73.900",
-      price: "Rp?9.000",
-      image: "🎮",
-    },
-    {
-      name: "Blood Strike",
-      badge: "🔥 300 + 20 Golds 🔥",
-      discount: "73%",
-      originalPrice: "Rp45.000",
-      price: "Rp?1.500",
-      image: "🎯",
-    },
-    {
-      name: "Blood Strike",
-      badge: "🔥 150 + 10 Golds 🔥",
-      discount: "75%",
-      originalPrice: "Rp28.000",
-      price: "Rp?.000",
-      image: "🎯",
-    },
-  ];
+  const [config, setConfig] = useState<FlashSaleConfig | null>(null);
+
+  useEffect(() => {
+    fetch("/api/flash-sale")
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setConfig(d.data); })
+      .catch(() => {});
+  }, []);
+
+  const countdown = useCountdown(config?.endTime ?? new Date(Date.now() + 3_600_000).toISOString());
+
+  // Still fetching — render nothing to avoid flash
+  if (config === null) return null;
+
+  // Not active, no products, or expired → informational placeholder
+  if (!config || !config.isActive || config.products.length === 0 || countdown.expired) {
+    return (
+      <div className="bg-white px-4 py-4 mt-0">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xl font-bold text-red-400">⚡ Flash Sale</span>
+        </div>
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl px-4 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl flex-shrink-0">
+            🕐
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-600">Flash Sale belum tersedia</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {countdown.expired
+                ? "Flash sale telah berakhir. Pantau terus untuk penawaran berikutnya!"
+                : "Saat ini belum ada flash sale yang aktif. Pantau terus ya!"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white px-4 pt-4 pb-4 mt-0">
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold text-red-500">⚡ Flash Sale</span>
           <div className="flex flex-col items-start">
-            <span className="text-[10px] text-slate-600 mb-1">Dimulai dalam</span>
-            <div className="flex items-center gap-1 text-sm font-bold">
-              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">00</span>
-              <span className="text-xs">:</span>
-              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">36</span>
-              <span className="text-xs">:</span>
-              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">34</span>
+            <span className="text-[10px] text-slate-600 mb-1">Berakhir dalam</span>
+            <div className="flex items-center gap-1">
+              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold tabular-nums">{pad(countdown.h)}</span>
+              <span className="text-xs font-bold text-slate-600">:</span>
+              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold tabular-nums">{pad(countdown.m)}</span>
+              <span className="text-xs font-bold text-slate-600">:</span>
+              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold tabular-nums">{pad(countdown.s)}</span>
             </div>
           </div>
         </div>
@@ -59,45 +105,58 @@ export default function FlashSale() {
         </button>
       </div>
 
-      {/* Flash Sale Products - Horizontal Scroll */}
+      {/* Products horizontal scroll */}
       <div className="overflow-x-auto hide-scrollbar -mx-4 px-4">
         <div className="flex gap-3 pb-2">
-          {products.map((product, idx) => (
+          {config.products.map((product) => (
             <div
-              key={idx}
-              className="flex-shrink-0 w-[160px] bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl overflow-hidden shadow-md"
+              key={product.id}
+              className="flex-shrink-0 w-[140px] bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl overflow-hidden shadow-md"
             >
-              <div className="relative aspect-square bg-gradient-to-br from-purple-200 to-blue-200 flex items-center justify-center">
-                <span className="text-6xl">{product.image}</span>
-                <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                  {product.discount}
-                </div>
-              </div>
-              <div className="p-2.5">
-                <div className="mb-1 inline-block">
+              {/* Brand image */}
+              <div className="relative aspect-square bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center overflow-hidden">
+                {product.brandImage ? (
                   <Image
-                    src="https://i.ibb.co.com/Zzs8nr2z/proses-kilat.png"
-                    alt="Proses Kilat"
-                    width={70}
-                    height={14}
-                    className="object-contain rounded-md"
+                    src={product.brandImage}
+                    alt={product.brand}
+                    fill
+                    className="object-cover"
                   />
-                </div>
-                <p className="text-[11px] font-medium text-slate-600 mb-1">{product.name}</p>
-                <div className="bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 mb-2">
-                  <p className="text-[10px] font-medium text-orange-600 text-center">{product.badge}</p>
-                </div>
-                <div className="flex items-center gap-1 mb-1">
-                  <span className="text-[10px] text-slate-400 line-through">{product.originalPrice}</span>
-                  <span className="bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded">
+                ) : (
+                  <span className="text-4xl font-bold text-purple-300">{(product.brand ?? "?").slice(0, 2).toUpperCase()}</span>
+                )}
+                {product.discount && (
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                     {product.discount}
-                  </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-2.5">
+                <p className="text-[11px] font-semibold text-slate-700 mb-0.5 leading-tight line-clamp-2">{product.name}</p>
+                {product.badge && (
+                  <div className="bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 mb-1.5">
+                    <p className="text-[9px] font-medium text-orange-600 text-center truncate">{product.badge}</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                  {product.originalPrice && (
+                    <span className="text-[10px] text-slate-400 line-through">{product.originalPrice}</span>
+                  )}
+                  {product.discount && (
+                    <span className="bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded">
+                      {product.discount}
+                    </span>
+                  )}
                 </div>
                 <p className="text-purple-600 font-bold text-sm mb-2">{product.price}</p>
-                <button className="w-full border border-purple-600 text-purple-600 text-[11px] font-semibold py-1.5 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-1">
-                  <span>🔔</span>
-                  <span>Ingatkan</span>
-                </button>
+                <Link
+                  href={`/brand/${toBrandSlug(product.brand ?? "")}`}
+                  className="w-full bg-purple-600 text-white text-[11px] font-semibold py-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1"
+                >
+                  <span>🛒</span>
+                  <span>Beli</span>
+                </Link>
               </div>
             </div>
           ))}

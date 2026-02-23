@@ -81,6 +81,13 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<SiteConfigData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  // Banner state
+  const [banners, setBanners] = useState<string[]>([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
+  const [bannersSaving, setBannersSaving] = useState(false);
+  const [newBannerUrl, setNewBannerUrl] = useState("");
+
   const toast = useToast();
 
   const loadConfig = useCallback(async () => {
@@ -97,9 +104,21 @@ export default function SettingsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadBanners = useCallback(async () => {
+    setBannersLoading(true);
+    try {
+      const res = await fetch("/api/admin/banners");
+      const data = await res.json();
+      if (data.success) setBanners(data.data);
+    } catch { /* ignore */ } finally {
+      setBannersLoading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadBanners();
+  }, [loadConfig, loadBanners]);
 
   async function toggleMode(provider: ProviderDef, currentMode: string) {
     const newMode = currentMode === provider.offValue ? provider.onValue : provider.offValue;
@@ -156,6 +175,73 @@ export default function SettingsPage() {
       toast.error("Gagal reset");
     } finally {
       setSaving((s) => ({ ...s, [provider.key]: false }));
+    }
+  }
+
+  // ── Banner helpers ────────────────────────────────────────────────────────
+
+  function addBanner() {
+    const url = newBannerUrl.trim();
+    if (!url) return;
+    try { new URL(url); } catch {
+      toast.error("URL tidak valid");
+      return;
+    }
+    if (banners.includes(url)) {
+      toast.error("URL banner sudah ada");
+      return;
+    }
+    setBanners((prev) => [...prev, url]);
+    setNewBannerUrl("");
+  }
+
+  function removeBanner(idx: number) {
+    setBanners((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function moveBanner(idx: number, dir: -1 | 1) {
+    const next = idx + dir;
+    if (next < 0 || next >= banners.length) return;
+    const arr = [...banners];
+    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    setBanners(arr);
+  }
+
+  async function saveBanners() {
+    if (banners.length === 0) {
+      toast.error("Minimal 1 banner");
+      return;
+    }
+    setBannersSaving(true);
+    try {
+      const res = await fetch("/api/admin/banners", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: banners }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success("Banner berhasil disimpan");
+      else toast.error(data.error ?? "Gagal menyimpan banner");
+    } catch {
+      toast.error("Gagal menyimpan banner");
+    } finally {
+      setBannersSaving(false);
+    }
+  }
+
+  async function resetBanners() {
+    setBannersSaving(true);
+    try {
+      const res = await fetch("/api/admin/banners", { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setBanners(data.data);
+        toast.success("Banner direset ke default");
+      }
+    } catch {
+      toast.error("Gagal reset banner");
+    } finally {
+      setBannersSaving(false);
     }
   }
 
@@ -296,6 +382,130 @@ export default function SettingsPage() {
                   </div>
                 );
               })
+            )}
+          </div>
+
+          {/* ─── Banner Carousel ──────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-700">🖼️ Banner Carousel</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Gambar ditampilkan di halaman utama secara berurutan. Perubahan langsung berlaku.
+                </p>
+              </div>
+              <button
+                onClick={resetBanners}
+                disabled={bannersSaving || bannersLoading}
+                className="text-[11px] text-slate-400 hover:text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 flex-shrink-0"
+              >
+                Reset default
+              </button>
+            </div>
+
+            {/* Banner list */}
+            <div className="divide-y divide-slate-50">
+              {bannersLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="px-4 py-3 flex items-center gap-3 animate-pulse">
+                    <div className="w-16 h-10 bg-slate-200 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 h-3 bg-slate-100 rounded" />
+                    <div className="w-16 h-6 bg-slate-100 rounded" />
+                  </div>
+                ))
+              ) : banners.length === 0 ? (
+                <div className="px-5 py-6 text-center">
+                  <p className="text-xs text-slate-400">Belum ada banner. Tambahkan URL gambar di bawah.</p>
+                </div>
+              ) : (
+                banners.map((url, idx) => (
+                  <div key={idx} className="px-4 py-3 flex items-center gap-3">
+                    {/* Preview */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`Banner ${idx + 1}`}
+                      className="w-16 h-10 object-cover rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200"
+                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                    />
+                    {/* URL (truncated) */}
+                    <p className="flex-1 text-[11px] text-slate-500 truncate min-w-0 font-mono">
+                      {url}
+                    </p>
+                    {/* Controls */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => moveBanner(idx, -1)}
+                        disabled={idx === 0 || bannersSaving}
+                        className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors"
+                        title="Naikan"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => moveBanner(idx, 1)}
+                        disabled={idx === banners.length - 1 || bannersSaving}
+                        className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors"
+                        title="Turunkan"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => removeBanner(idx)}
+                        disabled={bannersSaving}
+                        className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition-colors"
+                        title="Hapus"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add new banner */}
+            <div className="px-4 py-4 border-t border-slate-100 flex gap-2">
+              <input
+                type="url"
+                value={newBannerUrl}
+                onChange={(e) => setNewBannerUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addBanner()}
+                placeholder="https://cdn.example.com/banner.jpg"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition font-mono min-w-0"
+              />
+              <button
+                onClick={addBanner}
+                disabled={!newBannerUrl.trim()}
+                className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              >
+                + Tambah
+              </button>
+            </div>
+
+            {/* Save button */}
+            {!bannersLoading && (
+              <div className="px-4 pb-4">
+                <button
+                  onClick={saveBanners}
+                  disabled={bannersSaving || banners.length === 0}
+                  className="w-full py-2.5 rounded-xl bg-[#003D99] text-white text-sm font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {bannersSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : "💾 Simpan Banner"}
+                </button>
+              </div>
             )}
           </div>
 
