@@ -58,6 +58,25 @@ function formatPrice(n: number): string {
   return new Intl.NumberFormat("id-ID").format(n);
 }
 
+/**
+ * Estimate Pakasir gateway fee per payment method.
+ * QRIS: 0.7% + Rp310 (amount ≤ Rp105.000) | 1% flat (amount > Rp105.000)
+ * VA Artha Graha, Sampoerna: Rp2.500
+ * VA lainnya (BRI, BNI, BNC, CIMB, Maybank, Permata, ATM Bersama, dll): Rp3.500
+ * Others: 0
+ */
+function estimatePgFee(methodKey: string, amount: number): number {
+  if (methodKey === "qris") {
+    return amount > 105000
+      ? Math.ceil(amount * 0.01)
+      : Math.ceil(amount * 0.007) + 310;
+  }
+  const va2500 = ["artha_graha_va", "sampoerna_va"];
+  if (va2500.includes(methodKey)) return 2500;
+  if (methodKey.endsWith("_va")) return 3500;
+  return 0;
+}
+
 export default function BrandDetailPage({
   params,
 }: {
@@ -176,13 +195,26 @@ export default function BrandDetailPage({
   // Description expand state
   const [showDescription, setShowDescription] = useState(false);
 
+  // Checkout state
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutResult, setCheckoutResult] = useState<{
+    orderCode: string;
+    status: string;
+    amount: number;
+    productName: string;
+    paymentUrl?: string;
+    invoiceId?: string;
+    mode: string;
+  } | null>(null);
+
   // Can proceed to checkout? — all required fields filled + product selected + payment method chosen
   const canCheckout =
     !!selectedProduct &&
     !!paymentMethod &&
+    !checkoutLoading &&
     inputFields.every((f) => !f.required || (fieldValues[f.key]?.trim().length ?? 0) >= 2);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!selectedProduct) {
       toast.error("Pilih produk terlebih dahulu.");
       return;
@@ -193,24 +225,86 @@ export default function BrandDetailPage({
         return;
       }
     }
+    if (!paymentMethod) {
+      toast.error("Pilih metode pembayaran terlebih dahulu.");
+      return;
+    }
 
-    // TODO: Navigate to checkout page when checkout flow is built
-    const checkoutData = {
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      providerCode: selectedProduct.providerCode,
-      brand: brandName,
-      brandSlug,
-      sellingPrice: selectedProduct.sellingPrice,
-      fields: Object.fromEntries(inputFields.map((f) => [f.key, fieldValues[f.key]?.trim() ?? ""])),
-    };
-    const checkoutPayload = {
-      ...checkoutData,
-      paymentMethod,
-      ...(paymentMethod === "PAYMENT_GATEWAY" ? { paymentGatewayMethod: pgMethod } : {}),
-    };
-    sessionStorage.setItem("whuz_checkout", JSON.stringify(checkoutPayload));
-    toast.success("Produk dipilih! Checkout segera hadir.");
+    setCheckoutLoading(true);
+    try {
+      // targetNumber = first input field (primary identifier)
+      const targetNumber = fieldValues[inputFields[0]?.key ?? "userId"]?.trim() ?? "";
+      // targetData = all field values (for providers that need extra data like zone/server)
+      const targetData = Object.fromEntries(
+        inputFields.map((f) => [f.key, fieldValues[f.key]?.trim() ?? ""])
+      );
+
+      const body: Record<string, unknown> = {
+        productId: selectedProduct.id,
+        targetNumber,
+        targetData,
+        paymentMethod,
+      };
+      if (paymentMethod === "PAYMENT_GATEWAY") {
+        body.paymentGatewayMethod = pgMethod;
+        // redirectUrl for after payment — point to orders page or current page
+        body.redirectUrl = `${window.location.origin}/akun/pesanan`;
+      }
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        toast.error(data.error ?? "Checkout gagal. Coba lagi.");
+        return;
+      }
+
+      const result = data.data as {
+        orderCode: string;
+        status: string;
+        amount: number;
+        paymentUrl?: string;
+        invoiceId?: string;
+        viewToken?: string;
+      };
+
+      if (paymentMethod === "PAYMENT_GATEWAY" && result.paymentUrl) {
+        let finalPaymentUrl = result.paymentUrl;
+
+        // Jika guest (ada viewToken), inject redirectUrl ke halaman detail pesanan langsung
+        // URL: /akun/pesanan/[code]?token=... — tidak perlu search form
+        if (result.viewToken) {
+          try {
+            const pesananUrl = `${window.location.origin}/akun/pesanan/${encodeURIComponent(result.orderCode)}?token=${encodeURIComponent(result.viewToken)}`;
+            const u = new URL(
+              result.paymentUrl.startsWith("http")
+                ? result.paymentUrl
+                : `${window.location.origin}${result.paymentUrl}`
+            );
+            u.searchParams.set("redirectUrl", pesananUrl);
+            finalPaymentUrl = u.toString();
+          } catch { /* keep original */ }
+        }
+
+        window.location.href = finalPaymentUrl;
+        return;
+      }
+
+      // Wallet or no paymentUrl — show success overlay
+      setCheckoutResult({
+        ...result,
+        productName: selectedProduct.name,
+        mode: data.mode ?? "mock",
+      });
+    } catch {
+      toast.error("Terjadi kesalahan. Periksa koneksi Anda.");
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   // ===================== LOADING STATE =====================
@@ -1030,7 +1124,9 @@ export default function BrandDetailPage({
                   <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide pt-3 pb-2">E-Wallet &amp; QRIS</p>
                   {qrisItems.map((m) => {
                     const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
-                    const price = selectedProduct?.sellingPrice ?? 0;
+                    const base = selectedProduct?.sellingPrice ?? 0;
+                    const fee = base > 0 ? estimatePgFee(m.key, base) : 0;
+                    const total = base + fee;
                     const abbr = m.key.replace(/_va$/, "").toUpperCase().slice(0, 4);
                     return (
                       <button
@@ -1053,9 +1149,17 @@ export default function BrandDetailPage({
                         </div>
                         <div className="flex-1 text-left">
                           <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                          {fee > 0 && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">+biaya Rp {formatPrice(fee)}</p>
+                          )}
                         </div>
-                        {price > 0 && (
-                          <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                        {base > 0 && (
+                          <div className="text-right flex-shrink-0 mr-2">
+                            <p className="text-sm font-bold text-slate-800">Rp {formatPrice(total)}</p>
+                            {fee > 0 && (
+                              <p className="text-[10px] text-slate-400">harga + biaya</p>
+                            )}
+                          </div>
                         )}
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                           isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
@@ -1081,7 +1185,9 @@ export default function BrandDetailPage({
                   <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide pt-3 pb-2">Virtual Account</p>
                   {vaItems.map((m) => {
                     const isActive = paymentMethod === "PAYMENT_GATEWAY" && pgMethod === m.key;
-                    const price = selectedProduct?.sellingPrice ?? 0;
+                    const base = selectedProduct?.sellingPrice ?? 0;
+                    const fee = base > 0 ? estimatePgFee(m.key, base) : 0;
+                    const total = base + fee;
                     const abbr = m.key.replace(/_va$/, "").toUpperCase().slice(0, 4);
                     return (
                       <button
@@ -1099,9 +1205,17 @@ export default function BrandDetailPage({
                         </div>
                         <div className="flex-1 text-left">
                           <p className="text-sm font-semibold text-slate-800">{m.label}</p>
+                          {fee > 0 && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">+biaya Rp {formatPrice(fee)}</p>
+                          )}
                         </div>
-                        {price > 0 && (
-                          <p className="text-sm font-semibold text-slate-600 flex-shrink-0 mr-2">Rp {formatPrice(price)}</p>
+                        {base > 0 && (
+                          <div className="text-right flex-shrink-0 mr-2">
+                            <p className="text-sm font-bold text-slate-800">Rp {formatPrice(total)}</p>
+                            {fee > 0 && (
+                              <p className="text-[10px] text-slate-400">harga + biaya</p>
+                            )}
+                          </div>
                         )}
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                           isActive ? "border-purple-600 bg-purple-600" : "border-slate-300"
@@ -1135,14 +1249,21 @@ export default function BrandDetailPage({
                 {/* CTA button */}
                 <button
                   onClick={handleCheckout}
-                  disabled={!canCheckout}
-                  className={`px-6 py-3 rounded-xl text-sm font-bold transition-all ${
-                    canCheckout
+                  disabled={!canCheckout || checkoutLoading}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+                    canCheckout && !checkoutLoading
                       ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-200 hover:from-purple-700 hover:to-purple-600 active:scale-[0.97]"
                       : "bg-slate-200 text-slate-400 cursor-not-allowed"
                   }`}
                 >
-                  Beli Sekarang
+                  {checkoutLoading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    "Beli Sekarang"
+                  )}
                 </button>
               </div>
             ) : (
@@ -1154,6 +1275,91 @@ export default function BrandDetailPage({
             )}
           </div>
         </div>
+
+        {/* ---- Checkout Success Overlay ---- */}
+        {checkoutResult && (
+          <div className="fixed inset-0 z-[60] flex items-end justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setCheckoutResult(null)}
+            />
+            {/* Sheet */}
+            <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl px-5 py-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+              {/* Handle */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-300" />
+
+              {/* Status icon */}
+              <div className="flex flex-col items-center text-center mt-2 mb-5">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-3">
+                  <svg className="w-9 h-9 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-slate-800 mb-1">
+                  {checkoutResult.status === "PAID" ? "Pesanan Dibuat!" : "Menunggu Pembayaran"}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {checkoutResult.status === "PAID"
+                    ? "Pesananmu sedang diproses. Serial number akan dikirim segera."
+                    : "Selesaikan pembayaran untuk memproses pesananmu."}
+                </p>
+                {checkoutResult.mode === "mock" && (
+                  <span className="mt-2 text-[10px] font-bold bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                    🧪 MODE SIMULASI
+                  </span>
+                )}
+              </div>
+
+              {/* Order details */}
+              <div className="bg-slate-50 rounded-2xl p-4 mb-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Produk</span>
+                  <span className="text-xs font-semibold text-slate-700 text-right max-w-[60%] truncate">{checkoutResult.productName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Kode Pesanan</span>
+                  <span className="text-xs font-mono font-bold text-purple-700">{checkoutResult.orderCode}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Total Bayar</span>
+                  <span className="text-sm font-bold text-slate-800">Rp {formatPrice(checkoutResult.amount)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Status</span>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    checkoutResult.status === "PAID"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {checkoutResult.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => router.push("/akun/pesanan")}
+                  className="w-full py-3 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 transition-colors"
+                >
+                  Lihat Pesanan
+                </button>
+                <button
+                  onClick={() => {
+                    setCheckoutResult(null);
+                    setSelectedProduct(null);
+                    setPaymentMethod(null);
+                    setFieldValues(Object.fromEntries(inputFields.map((f) => [f.key, ""])));
+                  }}
+                  className="w-full py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors"
+                >
+                  Beli Lagi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

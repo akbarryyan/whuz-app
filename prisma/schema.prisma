@@ -244,6 +244,18 @@ model PaymentMethod {
 }
 
 // ============================================
+// SITE CONFIGURATION (key-value, managed by admin)
+// ============================================
+
+model SiteConfig {
+  key       String   @id       // e.g. PROVIDER_DIGIFLAZZ_MODE, PROVIDER_VIP_MODE, PROVIDER_PAKASIR_MODE
+  value     String   @db.Text  // e.g. mock, real
+  updatedAt DateTime @updatedAt
+
+  @@map("site_configs")
+}
+
+// ============================================
 // BRAND METADATA (managed by admin, survives re-sync)
 // ============================================
 

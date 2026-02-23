@@ -7,6 +7,7 @@ import { MockProviderAdapter } from "./mock/mock-provider.adapter";
 // ── Runtime mode override (admin toggle, survives hot-reload via globalThis) ──
 const g = globalThis as unknown as {
   _providerModeOverride?: Partial<Record<ProviderType, ProviderMode>>;
+  _providerModeInitialized?: boolean;
 };
 if (!g._providerModeOverride) g._providerModeOverride = {};
 
@@ -17,10 +18,46 @@ export function setProviderModeOverride(provider: ProviderType, mode: ProviderMo
   } else {
     g._providerModeOverride[provider] = mode;
   }
+  // Persist to DB (fire-and-forget — import dynamically to avoid circular deps)
+  import("@/lib/site-config").then(({ setSiteConfig, deleteSiteConfig }) => {
+    const key = provider === ProviderType.DIGIFLAZZ
+      ? "PROVIDER_DIGIFLAZZ_MODE"
+      : "PROVIDER_VIP_MODE";
+    if (mode === null) {
+      deleteSiteConfig(key).catch(() => {});
+    } else {
+      setSiteConfig(key, mode.toLowerCase()).catch(() => {});
+    }
+  }).catch(() => {});
 }
 
 export function getProviderModeOverrides(): Partial<Record<ProviderType, ProviderMode>> {
   return { ...(g._providerModeOverride ?? {}) };
+}
+
+/**
+ * Load provider modes from DB into globalThis cache.
+ * Call once on server init or when admin opens the settings page.
+ */
+export async function initProviderModesFromDB(): Promise<void> {
+  try {
+    const { getAllSiteConfig } = await import("@/lib/site-config");
+    const cfg = await getAllSiteConfig();
+
+    if (!g._providerModeOverride) g._providerModeOverride = {};
+
+    const dfVal = cfg["PROVIDER_DIGIFLAZZ_MODE"];
+    if (dfVal === "real") g._providerModeOverride[ProviderType.DIGIFLAZZ] = ProviderMode.REAL;
+    else if (dfVal === "mock") g._providerModeOverride[ProviderType.DIGIFLAZZ] = ProviderMode.MOCK;
+
+    const vipVal = cfg["PROVIDER_VIP_MODE"];
+    if (vipVal === "real") g._providerModeOverride[ProviderType.VIP_RESELLER] = ProviderMode.REAL;
+    else if (vipVal === "mock") g._providerModeOverride[ProviderType.VIP_RESELLER] = ProviderMode.MOCK;
+
+    g._providerModeInitialized = true;
+  } catch {
+    // Non-fatal — fall through to env defaults
+  }
 }
 
 export class ProviderFactory {
@@ -55,10 +92,10 @@ export class ProviderFactory {
   }
 
   /**
-   * Get provider mode — runtime override takes precedence over env vars
+   * Get provider mode — runtime override (loaded from DB) takes precedence over env vars
    */
   static getProviderMode(providerType: ProviderType): ProviderMode {
-    // 1. Admin runtime override
+    // 1. Admin runtime override (pre-loaded from DB at startup or on first admin access)
     const override = g._providerModeOverride?.[providerType];
     if (override) return override;
 
@@ -68,7 +105,7 @@ export class ProviderFactory {
         ? "PROVIDER_DIGIFLAZZ_MODE"
         : "PROVIDER_VIP_MODE";
     const envMode = process.env[envKey];
-    if (envMode === ProviderMode.REAL) return ProviderMode.REAL;
+    if (envMode?.toLowerCase() === ProviderMode.REAL) return ProviderMode.REAL;
 
     // 3. Default: mock (safe default)
     return ProviderMode.MOCK;
@@ -84,3 +121,4 @@ export class ProviderFactory {
     };
   }
 }
+

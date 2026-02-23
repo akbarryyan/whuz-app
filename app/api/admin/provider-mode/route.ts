@@ -12,12 +12,16 @@ import {
   ProviderFactory,
   setProviderModeOverride,
   getProviderModeOverrides,
+  initProviderModesFromDB,
 } from "@/src/infra/providers/provider.factory";
 import { ProviderType, ProviderMode } from "@/src/core/domain/enums/provider.enum";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Ensure globalThis is synced from DB on every cold-start
+  await initProviderModesFromDB();
+
   const modes = ProviderFactory.getProviderModes();
   const overrides = getProviderModeOverrides();
 
@@ -60,6 +64,7 @@ export async function PATCH(request: Request) {
   }
 
   const { provider, mode } = parsed.data;
+  // setProviderModeOverride now also persists to DB automatically
   setProviderModeOverride(
     provider as ProviderType,
     mode === null ? null : (mode as ProviderMode)
@@ -72,3 +77,4 @@ export async function PATCH(request: Request) {
     data: { provider, effective, override: mode },
   });
 }
+

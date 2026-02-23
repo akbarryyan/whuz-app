@@ -18,13 +18,28 @@ import {
  */
 export class PakasirAdapter implements IPaymentGatewayPort {
   private readonly client: Pakasir;
+  private readonly mode: "sandbox" | "production";
 
-  constructor() {
-    const slug = process.env.PAKASIR_SLUG ?? "";
-    const apikey = process.env.PAKASIR_API_KEY ?? "";
+  /**
+   * @param mode "sandbox" (default) — pakai PAKASIR_SANDBOX_SLUG/KEY
+   *             "production"         — pakai PAKASIR_SLUG/KEY
+   * Kedua mode memanggil API Pakasir yang nyata.
+   */
+  constructor(mode: "sandbox" | "production" = "sandbox") {
+    this.mode = mode;
+
+    const slug =
+      mode === "production"
+        ? (process.env.PAKASIR_SLUG ?? "")
+        : (process.env.PAKASIR_SANDBOX_SLUG ?? process.env.PAKASIR_SLUG ?? "");
+
+    const apikey =
+      mode === "production"
+        ? (process.env.PAKASIR_API_KEY ?? "")
+        : (process.env.PAKASIR_SANDBOX_API_KEY ?? process.env.PAKASIR_API_KEY ?? "");
 
     if (!slug || !apikey) {
-      console.warn("[Pakasir] PAKASIR_SLUG atau PAKASIR_API_KEY belum diset di .env");
+      console.warn(`[Pakasir:${mode}] PAKASIR_SLUG atau PAKASIR_API_KEY belum diset di .env`);
     }
 
     this.client = new Pakasir({ slug, apikey });
@@ -97,8 +112,8 @@ export class PakasirAdapter implements IPaymentGatewayPort {
     // status param diabaikan karena SDK tidak mendukung param ini
     _status: "completed" | "expired" = "completed"
   ): Promise<void> {
-    if (process.env.APP_ENV === "production") {
-      throw new Error("simulatePayment tidak boleh dipanggil di production");
+    if (this.mode === "production") {
+      throw new Error("simulatePayment tidak boleh dipanggil di mode production");
     }
     await this.client.simulationPayment(orderId, amount);
   }
