@@ -42,12 +42,12 @@ export default function BottomNavigation() {
 
   const handleNavClick = (item: (typeof navItems)[number]) => {
     if (item.id === "akun") {
-      // Jika belum login → redirect ke /login
-      if (!user) {
+      // Hanya redirect ke /login jika session sudah selesai dicek dan memang belum login
+      // Jika session masih loading, navigasi ke /akun dan biarkan halaman itu yang handle auth
+      if (sessionChecked && !user) {
         router.push("/login");
         return;
       }
-      // Jika sudah login → ke halaman akun
       router.push("/akun");
       return;
     }
@@ -90,8 +90,8 @@ export default function BottomNavigation() {
             : "U";
           return (
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white transition-all ${
-                active ? "ring-2 ring-purple-400 ring-offset-1" : "opacity-80"
+              className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                active ? "ring-2 ring-purple-400 ring-offset-1" : ""
               }`}
               style={{ background: "#9333EA" }}
             >
@@ -99,7 +99,7 @@ export default function BottomNavigation() {
             </div>
           );
         }
-        // Belum login: ikon user biasa
+        // Belum login / masih loading: ikon user biasa
         return (
           <svg className="w-6 h-6" fill="none" stroke={color} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -141,9 +141,7 @@ export default function BottomNavigation() {
             >
               {renderIcon(nav.id, active)}
               <span className={`text-xs font-medium ${active ? "text-purple-600" : ""}`}>
-                {nav.id === "akun" && sessionChecked && user
-                  ? user.name?.split(" ")[0] || "Akun"
-                  : nav.label}
+                {nav.label}
               </span>
             </button>
           );

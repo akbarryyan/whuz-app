@@ -112,6 +112,7 @@ model User {
   tier            UserTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
   wallet          Wallet?
   orders          Order[]
+  walletTopups    WalletTopup[]
 
   @@index([email])
   @@index([phone])
@@ -294,4 +295,32 @@ model BrandMeta {
   updatedAt   DateTime @updatedAt
 
   @@map("brand_meta")
+}
+
+// ============================================
+// WALLET TOP UP
+// ============================================
+
+model WalletTopup {
+  id            String   @id @default(cuid())
+  topupCode     String   @unique // WT-YYYYMMDD-XXXX — used as order_id in Pakasir
+  userId        String
+  amount        Decimal  @db.Decimal(15, 2)
+  fee           Decimal  @db.Decimal(15, 2) @default(0)
+  totalPayment  Decimal  @db.Decimal(15, 2) @default(0)
+  status        String   // PENDING, COMPLETED, EXPIRED, FAILED
+  paymentMethod String?
+  paymentUrl    String?  @db.Text
+  paymentNumber String?  @db.VarChar(255)
+  invoiceId     String?  @unique
+  paidAt        DateTime?
+  expiredAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([topupCode])
+  @@map("wallet_topups")
 }

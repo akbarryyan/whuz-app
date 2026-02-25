@@ -293,7 +293,7 @@ export default function AkunPage() {
           label: "Top Up Wallet",
           sub: "Tambah saldo",
           color: "text-amber-600 bg-amber-50",
-          action: () => toast.info("Fitur Top Up akan segera hadir!"),
+          action: () => router.push("/topup"),
         },
       ],
     },
@@ -423,7 +423,7 @@ export default function AkunPage() {
                   {formatBalance(wallet?.balance ?? 0)}
                 </p>
                 <button
-                  onClick={() => toast.info("Fitur Top Up akan segera hadir!")}
+                  onClick={() => router.push("/topup")}
                   className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-full transition"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
