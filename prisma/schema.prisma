@@ -324,3 +324,24 @@ model WalletTopup {
   @@index([topupCode])
   @@map("wallet_topups")
 }
+
+// ============================================
+// PROMO
+// ============================================
+
+model Promo {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  imageUrl    String   @db.Text
+  linkUrl     String?  @db.Text       // Optional deep-link or external URL when card is tapped
+  startDate   DateTime?
+  endDate     DateTime?               // null = no expiry
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("promos")
+}

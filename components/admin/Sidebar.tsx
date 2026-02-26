@@ -56,6 +56,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               { name: "Produk", icon: "🛒", href: "/admin/products" },
               { name: "Brand", icon: "🖼️", href: "/admin/brands" },
               { name: "Flash Sale", icon: "⚡", href: "/admin/flash-sale" },
+              { name: "Promo", icon: "🎁", href: "/admin/promos" },
               { name: "Transaksi", icon: "💳", href: "/admin/transactions" },
               { name: "Laporan", icon: "📈", href: "/admin/reports" },
               { name: "Wallet", icon: "💰", href: "/admin/wallet" },
