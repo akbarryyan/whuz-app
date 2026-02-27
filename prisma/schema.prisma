@@ -113,6 +113,7 @@ model User {
   wallet          Wallet?
   orders          Order[]
   walletTopups    WalletTopup[]
+  tickets         Ticket[]
 
   @@index([email])
   @@index([phone])
@@ -344,4 +345,38 @@ model Promo {
 
   @@index([isActive, sortOrder])
   @@map("promos")
+}
+
+// ============================================
+// TICKET / CS MODELS
+// ============================================
+
+model Ticket {
+  id          String   @id @default(cuid())
+  userId      String
+  subject     String
+  status      String   @default("OPEN") // OPEN, REPLIED, CLOSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    TicketMessage[]
+
+  @@index([userId, status])
+  @@index([status, updatedAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  senderRole  String   // USER, ADMIN
+  senderId    String?  // userId of sender (nullable for system msgs)
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
 }

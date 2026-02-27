@@ -51,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="mt-8 flex-1 overflow-y-auto pr-2">
           <p className="mb-2 px-3 text-xs font-medium text-slate-400">Utama</p>
           <nav className="flex flex-col gap-1 text-sm">
-            {[
+            {([
               { name: "Dashboard", icon: "📊", href: "/admin" },
               { name: "Produk", icon: "🛒", href: "/admin/products" },
               { name: "Brand", icon: "🖼️", href: "/admin/brands" },
@@ -61,8 +61,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               { name: "Transaksi", icon: "💳", href: "/admin/transactions" },
               { name: "Laporan", icon: "📈", href: "/admin/reports" },
               { name: "Wallet", icon: "💰", href: "/admin/wallet" },
-              { name: "Pesan", icon: "💬", href: "/admin/messages", badge: "4" },
-            ].map((item) => {
+              { name: "Pesan", icon: "💬", href: "/admin/tickets" },
+            ] as { name: string; icon: string; href: string; badge?: number }[]).map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link

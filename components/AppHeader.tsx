@@ -13,6 +13,7 @@ interface AppHeaderProps {
  */
 export default function AppHeader({ onBack }: AppHeaderProps) {
   const [logoUrl, setLogoUrl] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/site-branding")
@@ -20,6 +21,10 @@ export default function AppHeader({ onBack }: AppHeaderProps) {
       .then((d) => {
         if (d.data?.site_logo) setLogoUrl(d.data.site_logo);
       })
+      .catch(() => {});
+    fetch("/api/tickets/unread-count")
+      .then((r) => r.json())
+      .then((d) => { if (d.count) setUnreadCount(d.count); })
       .catch(() => {});
   }, []);
   return (
@@ -58,15 +63,21 @@ export default function AppHeader({ onBack }: AppHeaderProps) {
         {/* Right icons */}
         <div className="flex items-center flex-shrink-0">
           {/* Chat / CS */}
-          <button
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+          <a
+            href="/tickets"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors relative"
             aria-label="Customer Service"
           >
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-          </button>
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold px-1">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </a>
           {/* Bell */}
           <button
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
