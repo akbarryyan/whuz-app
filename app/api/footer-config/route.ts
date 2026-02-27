@@ -18,6 +18,7 @@ export const FOOTER_DEFAULTS = {
     { name: "OVO",    img: "" },
     { name: "QRIS",   img: "" },
   ]),
+  footer_company_name: "PT Whuzpay Digital Indonesia",
   footer_contact_phone: "08123-456-7890",
   footer_contact_email: "support@whuzpay.com",
   footer_info_links: JSON.stringify([

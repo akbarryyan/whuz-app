@@ -88,7 +88,6 @@ export default function SettingsPage() {
   const [siteFavicon, setSiteFavicon] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
   const [siteKeywords, setSiteKeywords] = useState("");
-  const [siteColor, setSiteColor] = useState("#6D28D9");
   const [siteSaving, setSiteSaving] = useState<string | null>(null);
 
   const toast = useToast();
@@ -123,7 +122,6 @@ export default function SettingsPage() {
         setSiteFavicon(raw.site_favicon ?? "");
         setSiteDescription(raw.site_description ?? "");
         setSiteKeywords(raw.site_keywords ?? "");
-        setSiteColor(raw.site_theme_color ?? "#6D28D9");
       })
       .catch(() => {});
   }, []);
@@ -476,35 +474,6 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Pisahkan dengan koma. Digunakan untuk SEO.</p>
-              </div>
-
-              {/* Theme Color */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Warna Tema (Theme Color)</label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    value={siteColor}
-                    onChange={(e) => setSiteColor(e.target.value)}
-                    className="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer p-0.5"
-                  />
-                  <input
-                    type="text"
-                    value={siteColor}
-                    onChange={(e) => setSiteColor(e.target.value)}
-                    placeholder="#6D28D9"
-                    className="w-28 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono"
-                  />
-                  <div className="h-8 w-16 rounded-lg" style={{ backgroundColor: siteColor }} />
-                  <button
-                    onClick={() => saveSiteSetting("site_theme_color", siteColor, "Warna Tema")}
-                    disabled={siteSaving === "site_theme_color"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0 ml-auto"
-                  >
-                    {siteSaving === "site_theme_color" ? "..." : "💾 Simpan"}
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">Warna utama untuk meta theme-color dan PWA.</p>
               </div>
             </div>
           </div>

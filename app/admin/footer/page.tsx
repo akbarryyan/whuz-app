@@ -106,6 +106,7 @@ export default function AdminFooterPage() {
     { name: "OVO",    img: "" },
     { name: "QRIS",   img: "" },
   ]);
+  const [companyName,  setCompanyName]  = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [infoLinks,    setInfoLinks]    = useState<NavLink[]>([
@@ -133,6 +134,7 @@ export default function AdminFooterPage() {
         setLogoUrl(c.footer_logo_url ?? "");
         setTagline(c.footer_tagline ?? "");
         setPaymentMethods(safeJSON(c.footer_payment_methods, paymentMethods));
+        setCompanyName(c.footer_company_name ?? "");
         setContactPhone(c.footer_contact_phone ?? "");
         setContactEmail(c.footer_contact_email ?? "");
         const loadedInfoLinks = safeJSON<NavLink[]>(c.footer_info_links, infoLinks);
@@ -330,9 +332,26 @@ export default function AdminFooterPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100">
               <h2 className="font-bold text-slate-700 text-sm">Layanan Pengaduan Konsumen</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Nomor WhatsApp dan alamat email support.</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Nama perusahaan, nomor WhatsApp, dan alamat email support.</p>
             </div>
             <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Nama Perusahaan</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="PT Whuzpay Digital Indonesia"
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400"
+                  />
+                  <button onClick={() => save("footer_company_name", companyName, "Nama Perusahaan")}
+                    disabled={saving === "footer_company_name"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0">
+                    {saving === "footer_company_name" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Nomor WhatsApp</label>
                 <div className="flex gap-2">
