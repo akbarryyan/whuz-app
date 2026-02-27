@@ -82,11 +82,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
-  // Banner state
-  const [banners, setBanners] = useState<string[]>([]);
-  const [bannersLoading, setBannersLoading] = useState(true);
-  const [bannersSaving, setBannersSaving] = useState(false);
-  const [newBannerUrl, setNewBannerUrl] = useState("");
+  // Website settings state
+  const [siteName, setSiteName] = useState("");
+  const [siteLogo, setSiteLogo] = useState("");
+  const [siteFavicon, setSiteFavicon] = useState("");
+  const [siteDescription, setSiteDescription] = useState("");
+  const [siteKeywords, setSiteKeywords] = useState("");
+  const [siteColor, setSiteColor] = useState("#6D28D9");
+  const [siteSaving, setSiteSaving] = useState<string | null>(null);
 
   const toast = useToast();
 
@@ -104,21 +107,26 @@ export default function SettingsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadBanners = useCallback(async () => {
-    setBannersLoading(true);
-    try {
-      const res = await fetch("/api/admin/banners");
-      const data = await res.json();
-      if (data.success) setBanners(data.data);
-    } catch { /* ignore */ } finally {
-      setBannersLoading(false);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     loadConfig();
-    loadBanners();
-  }, [loadConfig, loadBanners]);
+  }, [loadConfig]);
+
+  // Load website settings from site-config
+  useEffect(() => {
+    fetch("/api/admin/site-config")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.success) return;
+        const raw = d.data?.raw ?? {};
+        setSiteName(raw.site_name ?? "Whuzpay");
+        setSiteLogo(raw.site_logo ?? "");
+        setSiteFavicon(raw.site_favicon ?? "");
+        setSiteDescription(raw.site_description ?? "");
+        setSiteKeywords(raw.site_keywords ?? "");
+        setSiteColor(raw.site_theme_color ?? "#6D28D9");
+      })
+      .catch(() => {});
+  }, []);
 
   async function toggleMode(provider: ProviderDef, currentMode: string) {
     const newMode = currentMode === provider.offValue ? provider.onValue : provider.offValue;
@@ -178,70 +186,23 @@ export default function SettingsPage() {
     }
   }
 
-  // ── Banner helpers ────────────────────────────────────────────────────────
+  // ── Website setting save helper ────────────────────────────────────────────
 
-  function addBanner() {
-    const url = newBannerUrl.trim();
-    if (!url) return;
-    try { new URL(url); } catch {
-      toast.error("URL tidak valid");
-      return;
-    }
-    if (banners.includes(url)) {
-      toast.error("URL banner sudah ada");
-      return;
-    }
-    setBanners((prev) => [...prev, url]);
-    setNewBannerUrl("");
-  }
-
-  function removeBanner(idx: number) {
-    setBanners((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  function moveBanner(idx: number, dir: -1 | 1) {
-    const next = idx + dir;
-    if (next < 0 || next >= banners.length) return;
-    const arr = [...banners];
-    [arr[idx], arr[next]] = [arr[next], arr[idx]];
-    setBanners(arr);
-  }
-
-  async function saveBanners() {
-    if (banners.length === 0) {
-      toast.error("Minimal 1 banner");
-      return;
-    }
-    setBannersSaving(true);
+  async function saveSiteSetting(key: string, value: string, label: string) {
+    setSiteSaving(key);
     try {
-      const res = await fetch("/api/admin/banners", {
-        method: "PUT",
+      const res = await fetch("/api/admin/site-config", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: banners }),
+        body: JSON.stringify({ key, value }),
       });
       const data = await res.json();
-      if (data.success) toast.success("Banner berhasil disimpan");
-      else toast.error(data.error ?? "Gagal menyimpan banner");
+      if (data.success) toast.success(`${label} disimpan`);
+      else toast.error(`Gagal menyimpan ${label}`);
     } catch {
-      toast.error("Gagal menyimpan banner");
+      toast.error(`Gagal menyimpan ${label}`);
     } finally {
-      setBannersSaving(false);
-    }
-  }
-
-  async function resetBanners() {
-    setBannersSaving(true);
-    try {
-      const res = await fetch("/api/admin/banners", { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
-        setBanners(data.data);
-        toast.success("Banner direset ke default");
-      }
-    } catch {
-      toast.error("Gagal reset banner");
-    } finally {
-      setBannersSaving(false);
+      setSiteSaving(null);
     }
   }
 
@@ -387,128 +348,165 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* ─── Banner Carousel ──────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          {/* ─── Website Settings ──────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-700">🌐 Pengaturan Website</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Nama, logo, favicon, deskripsi, dan identitas visual website.
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-5">
+              {/* Site Name */}
               <div>
-                <h2 className="text-sm font-bold text-slate-700">🖼️ Banner Carousel</h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Gambar ditampilkan di halaman utama secara berurutan. Perubahan langsung berlaku.
-                </p>
-              </div>
-              <button
-                onClick={resetBanners}
-                disabled={bannersSaving || bannersLoading}
-                className="text-[11px] text-slate-400 hover:text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 flex-shrink-0"
-              >
-                Reset default
-              </button>
-            </div>
-
-            {/* Banner list */}
-            <div className="divide-y divide-slate-50">
-              {bannersLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3 animate-pulse">
-                    <div className="w-16 h-10 bg-slate-200 rounded-lg flex-shrink-0" />
-                    <div className="flex-1 h-3 bg-slate-100 rounded" />
-                    <div className="w-16 h-6 bg-slate-100 rounded" />
-                  </div>
-                ))
-              ) : banners.length === 0 ? (
-                <div className="px-5 py-6 text-center">
-                  <p className="text-xs text-slate-400">Belum ada banner. Tambahkan URL gambar di bawah.</p>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Nama Website</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={siteName}
+                    onChange={(e) => setSiteName(e.target.value)}
+                    placeholder="Whuzpay"
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400"
+                  />
+                  <button
+                    onClick={() => saveSiteSetting("site_name", siteName, "Nama Website")}
+                    disabled={siteSaving === "site_name"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {siteSaving === "site_name" ? "..." : "💾 Simpan"}
+                  </button>
                 </div>
-              ) : (
-                banners.map((url, idx) => (
-                  <div key={idx} className="px-4 py-3 flex items-center gap-3">
-                    {/* Preview */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt={`Banner ${idx + 1}`}
-                      className="w-16 h-10 object-cover rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200"
-                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
-                    />
-                    {/* URL (truncated) */}
-                    <p className="flex-1 text-[11px] text-slate-500 truncate min-w-0 font-mono">
-                      {url}
-                    </p>
-                    {/* Controls */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => moveBanner(idx, -1)}
-                        disabled={idx === 0 || bannersSaving}
-                        className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors"
-                        title="Naikan"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => moveBanner(idx, 1)}
-                        disabled={idx === banners.length - 1 || bannersSaving}
-                        className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors"
-                        title="Turunkan"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => removeBanner(idx)}
-                        disabled={bannersSaving}
-                        className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition-colors"
-                        title="Hapus"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Add new banner */}
-            <div className="px-4 py-4 border-t border-slate-100 flex gap-2">
-              <input
-                type="url"
-                value={newBannerUrl}
-                onChange={(e) => setNewBannerUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addBanner()}
-                placeholder="https://cdn.example.com/banner.jpg"
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition font-mono min-w-0"
-              />
-              <button
-                onClick={addBanner}
-                disabled={!newBannerUrl.trim()}
-                className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              >
-                + Tambah
-              </button>
-            </div>
-
-            {/* Save button */}
-            {!bannersLoading && (
-              <div className="px-4 pb-4">
-                <button
-                  onClick={saveBanners}
-                  disabled={bannersSaving || banners.length === 0}
-                  className="w-full py-2.5 rounded-xl bg-[#003D99] text-white text-sm font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  {bannersSaving ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Menyimpan...
-                    </>
-                  ) : "💾 Simpan Banner"}
-                </button>
               </div>
-            )}
+
+              {/* Site Logo */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">URL Logo</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={siteLogo}
+                    onChange={(e) => setSiteLogo(e.target.value)}
+                    placeholder="https://cdn.example.com/logo.png"
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                  />
+                  <button
+                    onClick={() => saveSiteSetting("site_logo", siteLogo, "Logo")}
+                    disabled={siteSaving === "site_logo"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {siteSaving === "site_logo" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+                {siteLogo && (
+                  <div className="mt-2 p-3 bg-slate-50 rounded-xl inline-flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={siteLogo} alt="Logo preview" className="h-10 w-auto object-contain" />
+                    <span className="text-[10px] text-slate-400">Preview logo</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Site Favicon */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">URL Favicon</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={siteFavicon}
+                    onChange={(e) => setSiteFavicon(e.target.value)}
+                    placeholder="https://cdn.example.com/favicon.ico"
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                  />
+                  <button
+                    onClick={() => saveSiteSetting("site_favicon", siteFavicon, "Favicon")}
+                    disabled={siteSaving === "site_favicon"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {siteSaving === "site_favicon" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+                {siteFavicon && (
+                  <div className="mt-2 p-2 bg-slate-50 rounded-xl inline-flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={siteFavicon} alt="Favicon preview" className="h-6 w-6 object-contain" />
+                    <span className="text-[10px] text-slate-400">Preview favicon</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Site Description */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Deskripsi (Meta Description)</label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={siteDescription}
+                    onChange={(e) => setSiteDescription(e.target.value)}
+                    placeholder="Top up game murah, voucher digital, dan bayar tagihan PPOB terpercaya di Whuzpay."
+                    rows={2}
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 resize-none"
+                  />
+                  <button
+                    onClick={() => saveSiteSetting("site_description", siteDescription, "Deskripsi")}
+                    disabled={siteSaving === "site_description"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0 self-start"
+                  >
+                    {siteSaving === "site_description" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Site Keywords */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Keywords (Meta Keywords)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={siteKeywords}
+                    onChange={(e) => setSiteKeywords(e.target.value)}
+                    placeholder="top up game, voucher digital, ppob, whuzpay"
+                    className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400"
+                  />
+                  <button
+                    onClick={() => saveSiteSetting("site_keywords", siteKeywords, "Keywords")}
+                    disabled={siteSaving === "site_keywords"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {siteSaving === "site_keywords" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Pisahkan dengan koma. Digunakan untuk SEO.</p>
+              </div>
+
+              {/* Theme Color */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Warna Tema (Theme Color)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    value={siteColor}
+                    onChange={(e) => setSiteColor(e.target.value)}
+                    className="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={siteColor}
+                    onChange={(e) => setSiteColor(e.target.value)}
+                    placeholder="#6D28D9"
+                    className="w-28 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono"
+                  />
+                  <div className="h-8 w-16 rounded-lg" style={{ backgroundColor: siteColor }} />
+                  <button
+                    onClick={() => saveSiteSetting("site_theme_color", siteColor, "Warna Tema")}
+                    disabled={siteSaving === "site_theme_color"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0 ml-auto"
+                  >
+                    {siteSaving === "site_theme_color" ? "..." : "💾 Simpan"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Warna utama untuk meta theme-color dan PWA.</p>
+              </div>
+            </div>
           </div>
 
           {/* Info box */}

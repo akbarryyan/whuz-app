@@ -12,6 +12,8 @@ export default function BannersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newUrl, setNewUrl] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [taglineSaving, setTaglineSaving] = useState(false);
   const toast = useToast();
 
   const loadBanners = useCallback(async () => {
@@ -29,6 +31,36 @@ export default function BannersPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadBanners(); }, [loadBanners]);
+
+  // Load tagline from site-config
+  useEffect(() => {
+    fetch("/api/admin/site-config")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setTagline(d.data?.raw?.banner_tagline ?? "Whuzpay - Tempat Top Up Game dan Jual Beli Produk Digital Terpercaya");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function saveTagline() {
+    setTaglineSaving(true);
+    try {
+      const res = await fetch("/api/admin/site-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "banner_tagline", value: tagline }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success("Tagline disimpan");
+      else toast.error("Gagal menyimpan tagline");
+    } catch {
+      toast.error("Gagal menyimpan tagline");
+    } finally {
+      setTaglineSaving(false);
+    }
+  }
 
   function addBanner() {
     const url = newUrl.trim();
@@ -274,6 +306,32 @@ export default function BannersPage() {
                 <strong>Tips:</strong> Gunakan gambar dengan rasio <strong>2:1</strong> (contoh: 1200×600 px) agar tampil optimal di carousel.
                 Perubahan langsung berlaku di halaman utama setelah disimpan — tanpa perlu restart server.
               </p>
+            </div>
+          </div>
+
+          {/* Tagline Banner */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-700">Tagline Banner</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Teks yang tampil di bawah carousel banner pada halaman utama.</p>
+            </div>
+            <div className="px-5 py-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  placeholder="Whuzpay - Tempat Top Up Game dan Jual Beli Produk Digital Terpercaya"
+                  className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400"
+                />
+                <button
+                  onClick={saveTagline}
+                  disabled={taglineSaving}
+                  className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                >
+                  {taglineSaving ? "..." : "💾 Simpan"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

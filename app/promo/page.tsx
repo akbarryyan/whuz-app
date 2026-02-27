@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import AppHeader from "@/components/AppHeader";
 import BottomNavigation from "@/components/BottomNavigation";
+import PageFooter from "@/components/PageFooter";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -207,6 +208,7 @@ export default function PromoPage() {
           </div>
         </div>
 
+        <PageFooter />
         <BottomNavigation />
       </div>
     </div>

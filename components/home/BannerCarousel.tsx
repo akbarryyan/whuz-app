@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 export default function BannerCarousel() {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [banners, setBanners] = useState<string[]>([]);
+  const [tagline, setTagline] = useState("Whuzpay - Tempat Top Up Game dan Jual Beli Produk Digital Terpercaya");
 
   // Fetch banner images from API
   useEffect(() => {
@@ -15,6 +16,7 @@ export default function BannerCarousel() {
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
           setBanners(d.data);
         }
+        if (d.tagline) setTagline(d.tagline);
       })
       .catch(() => {});
   }, []);
@@ -84,7 +86,7 @@ export default function BannerCarousel() {
         </button>
       </div>
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#E5F0FF] px-3 py-2 shadow-lg w-full max-w-[480px] text-center">
-        <p className="text-[11px] text-slate-800 font-semibold">Whuzpay - Tempat Top Up Game dan Jual Beli Produk Digital Terpercaya</p>
+        <p className="text-[11px] text-slate-800 font-semibold">{tagline}</p>
       </div>
     </div>
   );
