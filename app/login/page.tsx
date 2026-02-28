@@ -158,26 +158,26 @@ export default function LoginPage() {
                 onClick={() => setActiveTab("login")}
                 className={`flex-1 py-4 text-sm font-semibold transition-all relative ${
                   activeTab === "login"
-                    ? "text-purple-600"
+                    ? "text-[#003D99]"
                     : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 Masuk
                 {activeTab === "login" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 rounded-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#003D99] rounded-full" />
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("register")}
                 className={`flex-1 py-4 text-sm font-semibold transition-all relative ${
                   activeTab === "register"
-                    ? "text-purple-600"
+                    ? "text-[#003D99]"
                     : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 Daftar
                 {activeTab === "register" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 rounded-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#003D99] rounded-full" />
                 )}
               </button>
             </div>
@@ -263,7 +263,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3.5 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:from-purple-700 hover:to-purple-600 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                    className="w-full rounded-xl bg-[#003D99] py-3 text-sm font-bold text-white shadow-md transition hover:from-purple-700 hover:to-purple-600 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -285,7 +285,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setActiveTab("register")}
-                      className="font-semibold text-purple-600 hover:text-purple-700 transition"
+                      className="font-semibold text-[#003D99] hover:text-[#002366] transition"
                     >
                       Daftar sekarang
                     </button>
@@ -490,7 +490,7 @@ export default function LoginPage() {
                   {/* Terms note */}
                   <p className="text-xs text-slate-400 text-center leading-relaxed -mt-1">
                     Dengan mendaftar, kamu menyetujui{" "}
-                    <span className="text-purple-500 font-medium cursor-pointer hover:underline">
+                    <span className="text-[#003D99] font-medium cursor-pointer hover:underline">
                       Syarat & Ketentuan
                     </span>{" "}
                     yang berlaku di Whuzpay.
@@ -500,7 +500,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3.5 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:from-purple-700 hover:to-purple-600 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full rounded-xl bg-[#003D99] py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#002966] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -522,7 +522,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setActiveTab("login")}
-                      className="font-semibold text-purple-600 hover:text-purple-700 transition"
+                      className="font-semibold text-[#003D99] hover:text-[#002966] transition"
                     >
                       Masuk di sini
                     </button>

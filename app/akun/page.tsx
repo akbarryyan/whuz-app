@@ -39,7 +39,7 @@ interface TierInfo {
   marginMultiplier: number;
 }
 
-type ModalType = "edit-profile" | "change-password" | null;
+type ModalType = "change-password" | null;
 
 export default function AkunPage() {
   const router = useRouter();
@@ -55,10 +55,6 @@ export default function AkunPage() {
 
   // Modal state
   const [modal, setModal] = useState<ModalType>(null);
-
-  // Edit profile form
-  const [editForm, setEditForm] = useState({ name: "", phone: "" });
-  const [editLoading, setEditLoading] = useState(false);
 
   // Change password form
   const [pwForm, setPwForm] = useState({
@@ -84,10 +80,6 @@ export default function AkunPage() {
         setStats(data.stats ?? { totalOrders: 0, successOrders: 0 });
         setTier(data.tier ?? null);
         setNextTier(data.nextTier ?? null);
-        setEditForm({
-          name: data.user.name ?? "",
-          phone: data.user.phone ?? "",
-        });
       })
       .catch(() => router.replace("/login"))
       .finally(() => setIsLoading(false));
@@ -104,42 +96,6 @@ export default function AkunPage() {
     } catch {
       toast.error("Gagal logout. Coba lagi.");
       setIsLoggingOut(false);
-    }
-  };
-
-  // ===================== EDIT PROFILE =====================
-
-  const handleEditProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editLoading) return;
-
-    if (!editForm.name.trim() || editForm.name.trim().length < 2) {
-      toast.error("Nama minimal 2 karakter.");
-      return;
-    }
-
-    setEditLoading(true);
-    try {
-      const res = await fetch("/api/auth/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editForm.name.trim(),
-          phone: editForm.phone.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUser((prev) => prev ? { ...prev, name: editForm.name.trim(), phone: editForm.phone.trim() || null } : prev);
-        toast.success("Profil berhasil diperbarui.");
-        setModal(null);
-      } else {
-        toast.error(data.message || "Gagal memperbarui profil.");
-      }
-    } catch {
-      toast.error("Koneksi bermasalah. Coba lagi.");
-    } finally {
-      setEditLoading(false);
     }
   };
 
@@ -252,7 +208,7 @@ export default function AkunPage() {
           label: "Edit Profil",
           sub: "Nama & nomor HP",
           color: "text-purple-600 bg-purple-50",
-          action: () => { setEditForm({ name: user.name ?? "", phone: user.phone ?? "" }); setModal("edit-profile"); },
+          action: () => router.push("/akun/edit-profil"),
         },
         {
           icon: (
@@ -549,96 +505,6 @@ export default function AkunPage() {
 
         <BottomNavigation />
       </div>
-
-      {/* ===== MODAL EDIT PROFILE ===== */}
-      {modal === "edit-profile" && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
-        >
-          <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl p-6 pb-10 animate-slide-up">
-            {/* Handle */}
-            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
-
-            <h2 className="text-lg font-bold text-slate-800 mb-1">Edit Profil</h2>
-            <p className="text-sm text-slate-400 mb-5">Perbarui nama dan nomor HP kamu</p>
-
-            <form onSubmit={handleEditProfile} className="flex flex-col gap-4">
-              {/* Nama */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Nama Lengkap
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="Nama lengkap"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
-                    disabled={editLoading}
-                  />
-                </div>
-              </div>
-
-              {/* No HP */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Nomor HP <span className="normal-case font-normal text-slate-400">(opsional)</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="tel"
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))}
-                    placeholder="08xxxxxxxxxx"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 transition"
-                    disabled={editLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setModal(null)}
-                  className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={editLoading}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:from-purple-700 hover:to-purple-600 disabled:opacity-60"
-                >
-                  {editLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Menyimpan...
-                    </span>
-                  ) : "Simpan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ===== MODAL CHANGE PASSWORD ===== */}
       {modal === "change-password" && (

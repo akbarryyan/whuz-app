@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useToast } from "@/hooks/useToast";
+import { ToastContainer } from "@/components/ui/Toast";
 import Sidebar from "@/components/admin/Sidebar";
 import Header from "@/components/admin/Header";
 import StatsCards from "@/components/admin/StatsCards";
@@ -11,6 +14,18 @@ import CustomerSupport from "@/components/admin/CustomerSupport";
 
 export default function AdminDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toast = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("login") === "success") {
+      toast.success("Login berhasil! Selamat datang di dashboard admin.");
+      // Clean up URL
+      router.replace("/admin", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stats = [
     {
@@ -98,6 +113,8 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }

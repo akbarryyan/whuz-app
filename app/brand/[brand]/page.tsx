@@ -625,19 +625,24 @@ export default function BrandDetailPage({
               >
                 Semua
               </button>
-              {types.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setActiveType(type)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                    activeType === type
-                      ? "bg-purple-600 text-white shadow-md shadow-purple-200"
-                      : "bg-white text-slate-600 border border-slate-200 hover:border-purple-300 hover:text-purple-600"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
+              {types.map((type) => {
+                const label = type
+                  .replace(/[-_]/g, " ")
+                  .replace(/\b\w/g, (c) => c.toUpperCase());
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setActiveType(type)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                      activeType === type
+                        ? "bg-purple-600 text-white shadow-md shadow-purple-200"
+                        : "bg-white text-slate-600 border border-slate-200 hover:border-purple-300 hover:text-purple-600"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
