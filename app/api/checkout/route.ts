@@ -26,6 +26,7 @@ const CheckoutSchema = z.object({
   productId: z.string().min(1),
   targetNumber: z.string().min(1),
   targetData: z.record(z.string(), z.any()).optional(),
+  whatsapp: z.string().max(20).optional(),
   paymentMethod: z.enum(["WALLET", "PAYMENT_GATEWAY"]),
   paymentGatewayMethod: z.string().optional(),
   redirectUrl: z.string().url().optional(),

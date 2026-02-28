@@ -37,6 +37,16 @@ const BRAND_GRADIENTS = [
   "from-lime-500 to-green-600",
 ];
 
+// Priority order for "Semua" and "Top Up Game" tabs
+const PRIORITY_BRANDS = [
+  "Mobile Legends A",
+  "Mobile Legends B",
+  "Free Fire",
+  "Free Fire Max",
+  "Delta Force",
+  "PUBG Mobile",
+];
+
 interface GameGridProps {
   category?: string | null;
 }
@@ -56,7 +66,22 @@ export default function GameGrid({ category }: GameGridProps) {
     fetch(url)
       .then((r) => r.json())
       .then((res) => {
-        if (res.success) setBrands(res.data);
+        if (res.success) {
+          let data: BrandItem[] = res.data;
+          // Apply priority sorting for "Semua" (null) and "game" categories
+          if (!category || category === "game") {
+            const priorityLower = PRIORITY_BRANDS.map((b) => b.toLowerCase());
+            data = [...data].sort((a, b) => {
+              const idxA = priorityLower.indexOf(a.brand.toLowerCase());
+              const idxB = priorityLower.indexOf(b.brand.toLowerCase());
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+              return 0;
+            });
+          }
+          setBrands(data);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));

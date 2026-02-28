@@ -10,6 +10,7 @@ export interface CreateOrderInput {
   provider: string;       // DIGIFLAZZ | VIP_RESELLER
   targetNumber: string;
   targetData?: Record<string, any>;
+  whatsapp?: string;
   basePrice: number;
   markup: number;
   fee: number;
@@ -46,6 +47,7 @@ export class OrderRepository {
         provider: input.provider,
         targetNumber: input.targetNumber,
         targetData: input.targetData ?? undefined,
+        whatsapp: input.whatsapp ?? null,
         basePrice: input.basePrice,
         markup: input.markup,
         fee: input.fee,

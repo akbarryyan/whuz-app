@@ -16,6 +16,7 @@ export interface CheckoutInput {
   productId: string;
   targetNumber: string;            // phone / game ID / etc.
   targetData?: Record<string, any>; // zone, server, etc.
+  whatsapp?: string;                // customer WhatsApp for notification
   paymentMethod: "WALLET" | "PAYMENT_GATEWAY";
   paymentGatewayMethod?: string;   // QRIS, VA_BCA, etc. (PG only)
   redirectUrl?: string;            // PG redirect after payment
@@ -106,6 +107,7 @@ export class CreateCheckoutService {
       provider: product.provider,
       targetNumber: input.targetNumber,
       targetData: input.targetData,
+      whatsapp: input.whatsapp,
       basePrice,
       markup,
       fee,

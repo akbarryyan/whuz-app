@@ -164,6 +164,7 @@ model Order {
   provider        String?  // DIGIFLAZZ, VIP_RESELLER — which provider to use
   targetNumber    String   @db.VarChar(100) // Phone, Game ID, etc.
   targetData      Json?    // Additional data (server ID, zone, etc.)
+  whatsapp        String?  @db.VarChar(20)  // Customer WhatsApp number for notification
   // Pricing snapshot (frozen at order creation)
   basePrice       Decimal  @db.Decimal(15, 2) @default(0) // Provider cost
   markup          Decimal  @db.Decimal(15, 2) @default(0) // Markup/margin applied
