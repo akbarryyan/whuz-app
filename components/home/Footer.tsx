@@ -159,7 +159,7 @@ export default function Footer() {
           </div>
 
           {/* Pusat Bantuan card */}
-          <div className="mt-4 bg-slate-50 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-100 transition-colors cursor-pointer">
+          <a href="/pusat-bantuan" className="block mt-4 bg-slate-50 rounded-xl p-4 flex items-center gap-3 hover:bg-slate-100 transition-colors cursor-pointer">
             <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -175,7 +175,7 @@ export default function Footer() {
                 </svg>
               </p>
             </div>
-          </div>
+          </a>
         </div>
       )}
 

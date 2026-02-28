@@ -381,3 +381,24 @@ model TicketMessage {
   @@index([ticketId, createdAt])
   @@map("ticket_messages")
 }
+
+// ============================================
+// NOTIFICATION MODEL
+// ============================================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String?  // NULL = broadcast to all users
+  type        String   // ORDER_STATUS, PROMO, ANNOUNCEMENT, SYSTEM
+  title       String   @db.VarChar(200)
+  message     String   @db.Text
+  icon        String?  @db.VarChar(50) // optional icon key: order, promo, info, warning
+  link        String?  @db.VarChar(500) // optional deep link e.g. /akun/pesanan/WP-xxx
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@map("notifications")
+}

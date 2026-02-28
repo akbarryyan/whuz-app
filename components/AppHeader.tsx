@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import NotificationDropdown from "@/components/ui/NotificationDropdown";
 
 interface AppHeaderProps {
   /** If provided, renders a back chevron button */
@@ -14,6 +15,9 @@ interface AppHeaderProps {
 export default function AppHeader({ onBack }: AppHeaderProps) {
   const [logoUrl, setLogoUrl] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifUnread, setNotifUnread] = useState(0);
+  const bellRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetch("/api/site-branding")
@@ -26,7 +30,12 @@ export default function AppHeader({ onBack }: AppHeaderProps) {
       .then((r) => r.json())
       .then((d) => { if (d.count) setUnreadCount(d.count); })
       .catch(() => {});
+    fetch("/api/notifications?limit=1")
+      .then((r) => r.json())
+      .then((d) => { if (d.unreadCount != null) setNotifUnread(d.unreadCount); })
+      .catch(() => {});
   }, []);
+
   return (
     <header
       className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-40"
@@ -79,15 +88,30 @@ export default function AppHeader({ onBack }: AppHeaderProps) {
             )}
           </a>
           {/* Bell */}
-          <button
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Notifikasi"
-          >
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </button>
+          <div className="relative">
+            <button
+              ref={bellRef}
+              onClick={() => setNotifOpen((v) => !v)}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors relative"
+              aria-label="Notifikasi"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifUnread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold px-1">
+                  {notifUnread > 9 ? "9+" : notifUnread}
+                </span>
+              )}
+            </button>
+            <NotificationDropdown
+              anchorRef={bellRef}
+              open={notifOpen}
+              onClose={() => setNotifOpen(false)}
+              onUnreadCountChange={setNotifUnread}
+            />
+          </div>
         </div>
       </div>
     </header>
