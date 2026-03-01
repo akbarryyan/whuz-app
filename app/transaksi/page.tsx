@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import BottomNavigation from "@/components/BottomNavigation";
+import AppHeader from "@/components/AppHeader";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -188,14 +189,8 @@ export default function TransaksiPage() {
       <div className={`${quicksand.className} flex min-h-screen justify-center bg-[#F5F5F5]`}>
         <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col">
           {/* Header skeleton */}
-          <div className="w-full" style={{ backgroundColor: "#003D99" }}>
-            <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://www.vcgamers.com/image/vcg-logo.svg" alt="WhuzPay" className="h-7 w-auto object-contain" />
-              <div className="flex items-center gap-3">
-                {[1,2,3].map(i => <div key={i} className="w-5 h-5 rounded-full bg-white/20 animate-pulse" />)}
-              </div>
-            </div>
+          <AppHeader />
+          <div className="w-full fixed top-[60px] left-1/2 -translate-x-1/2 max-w-[480px] z-30" style={{ backgroundColor: "#003D99" }}>
             <div className="flex items-center gap-2 px-4 pb-3">
               <div className="h-9 flex-1 rounded-md bg-white/20 animate-pulse" />
               <div className="h-9 w-20 rounded-md bg-white/20 animate-pulse" />
@@ -233,42 +228,15 @@ export default function TransaksiPage() {
       <div className="relative w-full max-w-[480px] min-h-screen bg-white shadow-2xl flex flex-col">
 
         {/* ══════ HEADER ══════ */}
-        <header className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-40"
-          style={{ backgroundColor: "#003D99" }}>
-          {/* Logo row */}
-          <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-            {/* Logo */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://www.vcgamers.com/image/vcg-logo.svg"
-              alt="WhuzPay"
-              className="h-7 w-auto object-contain"
-            />
-            {/* Right icons */}
-            <div className="flex items-center gap-3">
-              <button className="text-white/80 hover:text-white transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </button>
-              <button className="text-white/80 hover:text-white transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </button>
-              <button className="text-white/80 hover:text-white transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </button>
-            </div>
-          </div>
+        <AppHeader onBack={() => router.back()} />
 
+        {/* Search + Tabs strip */}
+        <div
+          className="fixed top-[60px] left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30"
+          style={{ backgroundColor: "#003D99" }}
+        >
           {/* Search row */}
-          <div className="flex items-center gap-2 px-4 pb-3">
+          <div className="flex items-center gap-2 px-4 pb-3 pt-2">
             <div className="relative flex-1">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,11 +281,11 @@ export default function TransaksiPage() {
               </button>
             ))}
           </div>
-        </header>
+        </div>
 
         {/* ══════ CONTENT ══════ */}
-        {/* Header height is approximately: 48 (logo row) + 48 (search row) + 48 (tabs row) = ~148px */}
-        <div className="flex-1 overflow-y-auto pt-[152px] pb-24">
+        {/* AppHeader ~60px + search row ~48px + tabs row ~44px = ~152px */}
+        <div className="flex-1 overflow-y-auto pt-[160px] pb-24">
 
           {/* Info banner */}
           <div className="mx-4 mt-3 mb-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">

@@ -169,7 +169,9 @@ model Order {
   basePrice       Decimal  @db.Decimal(15, 2) @default(0) // Provider cost
   markup          Decimal  @db.Decimal(15, 2) @default(0) // Markup/margin applied
   fee             Decimal  @db.Decimal(15, 2) @default(0) // Payment gateway fee
-  amount          Decimal  @db.Decimal(15, 2)              // Total charged to customer
+  discount        Decimal  @db.Decimal(15, 2) @default(0) // Voucher discount applied
+  voucherCode     String?  @db.VarChar(50)                 // Voucher code used
+  amount          Decimal  @db.Decimal(15, 2)              // Total charged to customer (after discount)
   status          String   // CREATED, WAITING_PAYMENT, PAID, PROCESSING_PROVIDER, SUCCESS, FAILED, EXPIRED, REFUNDED
   paymentMethod   String   // WALLET, PAYMENT_GATEWAY
   serialNumber    String?  @db.Text // SN from provider
@@ -380,6 +382,52 @@ model TicketMessage {
 
   @@index([ticketId, createdAt])
   @@map("ticket_messages")
+}
+
+// ============================================
+// VOUCHER MODELS
+// ============================================
+
+model Voucher {
+  id            String   @id @default(cuid())
+  code          String   @unique @db.VarChar(50)
+  title         String   @db.VarChar(200)
+  description   String?  @db.Text
+  discountType  String   // PERCENT | FIXED
+  discountValue Decimal  @db.Decimal(15, 2)  // percent (0-100) or fixed IDR
+  maxDiscount   Decimal? @db.Decimal(15, 2)  // cap for PERCENT type
+  minPurchase   Decimal  @db.Decimal(15, 2) @default(0) // minimum order amount
+  quota         Int?     // max total claims (null = unlimited)
+  perUserLimit  Int      @default(1)          // max claims per user
+  usedCount     Int      @default(0)
+  startDate     DateTime?
+  endDate       DateTime?                    // null = no expiry
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  claims        VoucherClaim[]
+
+  @@index([code])
+  @@index([isActive, startDate, endDate])
+  @@map("vouchers")
+}
+
+model VoucherClaim {
+  id          String   @id @default(cuid())
+  voucherId   String
+  userId      String
+  status      String   @default("CLAIMED") // CLAIMED | USED | EXPIRED
+  claimedAt   DateTime @default(now())
+  usedAt      DateTime?
+  orderId     String?  // FK to order when used
+
+  voucher     Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([voucherId, userId])
+  @@index([userId, status])
+  @@index([voucherId])
+  @@map("voucher_claims")
 }
 
 // ============================================

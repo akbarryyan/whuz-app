@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import { useToast } from "@/hooks/useToast";
@@ -39,7 +39,7 @@ interface TierInfo {
   marginMultiplier: number;
 }
 
-type ModalType = "change-password" | null;
+type ModalType = "change-password" | "logout-confirm" | null;
 
 export default function AkunPage() {
   const router = useRouter();
@@ -55,6 +55,29 @@ export default function AkunPage() {
 
   // Modal state
   const [modal, setModal] = useState<ModalType>(null);
+  const [modalMounted, setModalMounted] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openModal = (type: ModalType) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setModal(type);
+    setModalMounted(true);
+    setModalVisible(false);
+    requestAnimationFrame(() => requestAnimationFrame(() => setModalVisible(true)));
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    closeTimerRef.current = setTimeout(() => {
+      setModal(null);
+      setModalMounted(false);
+      closeTimerRef.current = null;
+    }, 300);
+  };
 
   // Change password form
   const [pwForm, setPwForm] = useState({
@@ -132,7 +155,7 @@ export default function AkunPage() {
       if (data.success) {
         toast.success("Password berhasil diubah.");
         setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        setModal(null);
+        closeModal();
       } else {
         toast.error(data.message || "Gagal mengubah password.");
       }
@@ -220,7 +243,7 @@ export default function AkunPage() {
           label: "Ubah Password",
           sub: "Keamanan akun",
           color: "text-blue-600 bg-blue-50",
-          action: () => setModal("change-password"),
+          action: () => openModal("change-password"),
         },
       ],
     },
@@ -238,6 +261,18 @@ export default function AkunPage() {
           sub: `${stats?.totalOrders ?? 0} transaksi total`,
           color: "text-emerald-600 bg-emerald-50",
           action: () => router.push("/transaksi"),
+        },
+        {
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+          ),
+          label: "Voucher Saya",
+          sub: "Klaim & gunakan diskon",
+          color: "text-purple-600 bg-purple-50",
+          action: () => router.push("/voucher"),
         },
         {
           icon: (
@@ -266,7 +301,7 @@ export default function AkunPage() {
           label: "Bantuan & FAQ",
           sub: "Pusat bantuan",
           color: "text-slate-600 bg-slate-100",
-          action: () => toast.info("Fitur Bantuan akan segera hadir!"),
+          action: () => router.push("/pusat-bantuan"),
         },
       ],
     },
@@ -473,7 +508,7 @@ export default function AkunPage() {
 
           {/* ---- LOGOUT BUTTON ---- */}
           <button
-            onClick={handleLogout}
+            onClick={() => openModal("logout-confirm")}
             disabled={isLoggingOut}
             className="w-full flex items-center justify-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-100 text-rose-500 font-semibold text-sm py-4 rounded-2xl transition disabled:opacity-60"
           >
@@ -507,24 +542,64 @@ export default function AkunPage() {
       </div>
 
       {/* ===== MODAL CHANGE PASSWORD ===== */}
-      {modal === "change-password" && (
+      {modalMounted && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
+          className={`fixed inset-0 z-50 flex items-end justify-center transition-all duration-300 ${
+            modalVisible ? "bg-black/40 backdrop-blur-sm" : "bg-black/0 backdrop-blur-none"
+          }`}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl p-6 pb-10">
+          <div className={`w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl p-6 pb-10 transition-transform duration-300 ease-out ${
+            modalVisible ? "translate-y-0" : "translate-y-full"
+          }`}>
             {/* Handle */}
             <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
 
-            <h2 className="text-lg font-bold text-slate-800 mb-1">Ubah Password</h2>
-            <p className="text-sm text-slate-400 mb-5">Pastikan password baru kuat dan mudah diingat</p>
+            {/* ── Logout confirm ── */}
+            {modal === "logout-confirm" && (
+              <>
+                <div className="flex flex-col items-center gap-3 mb-6">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <h2 className="text-lg font-bold text-slate-800">Keluar dari Akun?</h2>
+                    <p className="text-sm text-slate-400 mt-1">Kamu perlu login kembali untuk menggunakan layanan WhuzPay.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 rounded-xl border border-slate-200 py-3.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { closeModal(); setTimeout(handleLogout, 300); }}
+                    disabled={isLoggingOut}
+                    className="flex-1 rounded-xl bg-rose-500 hover:bg-rose-600 py-3.5 text-sm font-bold text-white shadow-md shadow-rose-200 transition disabled:opacity-60"
+                  >
+                    Ya, Keluar
+                  </button>
+                </div>
+              </>
+            )}
 
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-              {/* Current password */}
-              {[
-                { key: "current" as const, label: "Password Saat Ini", field: "currentPassword" as const, placeholder: "Password lama kamu" },
-                { key: "new" as const, label: "Password Baru", field: "newPassword" as const, placeholder: "Minimal 6 karakter" },
-                { key: "confirm" as const, label: "Konfirmasi Password Baru", field: "confirmPassword" as const, placeholder: "Ulangi password baru" },
+            {/* ── Change password ── */}
+            {modal === "change-password" && (
+              <>
+                <h2 className="text-lg font-bold text-slate-800 mb-1">Ubah Password</h2>
+                <p className="text-sm text-slate-400 mb-5">Pastikan password baru kuat dan mudah diingat</p>
+                <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                {[
+                  { key: "current" as const, label: "Password Saat Ini", field: "currentPassword" as const, placeholder: "Password lama kamu" },
+                  { key: "new" as const, label: "Password Baru", field: "newPassword" as const, placeholder: "Minimal 6 karakter" },
+                  { key: "confirm" as const, label: "Konfirmasi Password Baru", field: "confirmPassword" as const, placeholder: "Ulangi password baru" },
               ].map(({ key, label, field, placeholder }) => (
                 <div key={key} className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -572,7 +647,7 @@ export default function AkunPage() {
               <div className="flex gap-3 mt-1">
                 <button
                   type="button"
-                  onClick={() => { setModal(null); setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }}
+                  onClick={() => { closeModal(); setTimeout(() => setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" }), 300); }}
                   className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Batal
@@ -594,7 +669,9 @@ export default function AkunPage() {
                   ) : "Simpan"}
                 </button>
               </div>
-            </form>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

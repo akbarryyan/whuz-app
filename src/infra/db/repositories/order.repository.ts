@@ -14,6 +14,8 @@ export interface CreateOrderInput {
   basePrice: number;
   markup: number;
   fee: number;
+  discount?: number;       // Voucher discount applied
+  voucherCode?: string;   // Voucher code used
   amount: number;
   status: OrderStatus;
   paymentMethod: string;
@@ -51,6 +53,8 @@ export class OrderRepository {
         basePrice: input.basePrice,
         markup: input.markup,
         fee: input.fee,
+        discount: input.discount ?? 0,
+        voucherCode: input.voucherCode ?? null,
         amount: input.amount,
         status: input.status,
         paymentMethod: input.paymentMethod,

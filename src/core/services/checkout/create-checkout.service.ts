@@ -22,6 +22,10 @@ export interface CheckoutInput {
   redirectUrl?: string;            // PG redirect after payment
   /** Authenticated user id — null for guest */
   userId?: string | null;
+  /** Voucher code entered by user (validated in route handler) */
+  voucherCode?: string;
+  /** Pre-calculated discount amount (validated in route handler) */
+  voucherDiscount?: number;
 }
 
 export interface CheckoutResult {
@@ -77,7 +81,8 @@ export class CreateCheckoutService {
     const basePrice = tierPricing?.basePrice ?? Number(product.providerPrice);
     const markup    = tierPricing?.markup    ?? Number(product.margin);
     const fee = 0; // Gateway fee added after we know method — update after PG call
-    const amount = basePrice + markup; // Customer pays: basePrice + markup (fee added below)
+    const discount = Math.min(input.voucherDiscount ?? 0, basePrice + markup - 1); // Can't discount to below 1
+    const amount = Math.max(1, basePrice + markup - discount); // Customer pays after voucher discount
 
     // ── 4. Generate order code ─────────────────────────────────────────────
     const orderCode = this.generateOrderCode();
@@ -111,6 +116,8 @@ export class CreateCheckoutService {
       basePrice,
       markup,
       fee,
+      discount,
+      voucherCode: input.voucherCode,
       amount,
       status:
         input.paymentMethod === PaymentMethod.WALLET

@@ -56,6 +56,22 @@ interface Product {
   description: string | null;
 }
 
+interface VoucherItem {
+  id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  discountType: "PERCENT" | "FIXED";
+  discountValue: number;
+  maxDiscount: number | null;
+  minPurchase: number;
+  quota: number | null;
+  usedCount: number;
+  endDate: string | null;
+  claimStatus: string | null;
+  isFull: boolean;
+}
+
 function formatPrice(n: number): string {
   return new Intl.NumberFormat("id-ID").format(n);
 }
@@ -106,11 +122,26 @@ export default function BrandDetailPage({
   const [pgMethod, setPgMethod] = useState<string>("qris");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [pgMethods, setPgMethods] = useState<{ id: string; key: string; label: string; group: string; imageUrl: string | null }[]>([]);
 
   // WhatsApp number state
   const [whatsapp, setWhatsapp] = useState<string>("");
+
+  // Voucher state
+  const [claimedVouchers, setClaimedVouchers] = useState<VoucherItem[]>([]);
+  const [claimedVouchersLoading, setClaimedVouchersLoading] = useState(false);
+  const [showVoucherSheet, setShowVoucherSheet] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<{
+    code: string;
+    title: string;
+    discountType: "PERCENT" | "FIXED";
+    discountValue: number;
+    discountAmount: number;
+  } | null>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
 
   // Resolve params + fetch products in a single effect
   useEffect(() => {
@@ -170,21 +201,93 @@ export default function BrandDetailPage({
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => {
-        if (d.isLoggedIn && d.user?.balance != null) {
-          setWalletBalance(Number(d.user.balance));
+        if (d.isLoggedIn) {
+          setIsLoggedIn(true);
+          if (d.user?.balance != null) {
+            setWalletBalance(Number(d.user.balance));
+          }
         } else {
+          setIsLoggedIn(false);
           setWalletBalance(null);
         }
       })
-      .catch(() => setWalletBalance(null))
+      .catch(() => { setIsLoggedIn(false); setWalletBalance(null); })
       .finally(() => setWalletLoading(false));
   }, []);
+
+  // Fetch user's claimed vouchers
+  useEffect(() => {
+    setClaimedVouchersLoading(true);
+    fetch("/api/vouchers")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setClaimedVouchers(d.data.filter((v: VoucherItem) => v.claimStatus === "CLAIMED"));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setClaimedVouchersLoading(false));
+  }, []);
+
+  // Reset voucher when product changes (discount is per-product)
+  useEffect(() => {
+    if (appliedVoucher) {
+      setAppliedVoucher(null);
+      setVoucherError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct?.id]);
 
   // Filtered products by active type
   const filteredProducts = useMemo(() => {
     if (activeType === "Semua") return products;
     return products.filter((p) => p.type === activeType);
   }, [products, activeType]);
+
+  // Final price after voucher discount
+  const finalPrice = useMemo(() => {
+    if (!selectedProduct) return 0;
+    if (!appliedVoucher) return selectedProduct.sellingPrice;
+    return Math.max(1, selectedProduct.sellingPrice - appliedVoucher.discountAmount);
+  }, [selectedProduct, appliedVoucher]);
+
+  const handleSelectVoucher = async (voucher: VoucherItem) => {
+    if (!selectedProduct) {
+      setVoucherError("Pilih produk terlebih dahulu sebelum menggunakan voucher.");
+      return;
+    }
+    setVoucherLoading(true);
+    setVoucherError(null);
+    try {
+      const res = await fetch(
+        `/api/vouchers/validate?code=${encodeURIComponent(voucher.code)}&amount=${selectedProduct.sellingPrice}`
+      );
+      const data = await res.json();
+      if (!data.success) {
+        setVoucherError(data.error ?? "Voucher tidak valid.");
+        setAppliedVoucher(null);
+      } else {
+        setAppliedVoucher({
+          code: data.data.code,
+          title: data.data.title,
+          discountType: data.data.discountType,
+          discountValue: data.data.discountValue,
+          discountAmount: data.data.discountAmount,
+        });
+        setVoucherError(null);
+        setShowVoucherSheet(false);
+      }
+    } catch {
+      setVoucherError("Gagal memvalidasi voucher. Coba lagi.");
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError(null);
+  };
 
   // Brand image or initials — prefer DB imageUrl, fallback to hardcoded map
   const brandImage = brandImageUrl ?? BRAND_IMAGES[brandName] ?? null;
@@ -250,6 +353,7 @@ export default function BrandDetailPage({
         targetData,
         paymentMethod,
         whatsapp: whatsapp.trim() || undefined,
+        voucherCode: appliedVoucher?.code || undefined,
       };
       if (paymentMethod === "PAYMENT_GATEWAY") {
         body.paymentGatewayMethod = pgMethod;
@@ -436,13 +540,6 @@ export default function BrandDetailPage({
                 </svg>
                 <span className="text-slate-600 font-medium truncate">{brandName}</span>
               </div>
-              {/* Share button */}
-              <button className="flex-shrink-0 flex items-center gap-1 text-[11px] text-blue-600 font-semibold bg-blue-50 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                Bagikan
-              </button>
             </div>
 
             {/* Brand info row */}
@@ -488,9 +585,6 @@ export default function BrandDetailPage({
                 <span className="text-sm font-bold text-slate-800">4.9</span>
                 <span className="text-[11px] text-slate-400">dari total 30 rb Ulasan Pembeli</span>
               </div>
-              <button className="text-[11px] text-purple-600 font-semibold hover:underline">
-                Lihat Semua Ulasan
-              </button>
             </div>
 
             {/* Review cards horizontal scroll */}
@@ -813,7 +907,7 @@ export default function BrandDetailPage({
                       {isDisabled && (
                         <p className="text-[10px] text-slate-400 mt-0.5">Login terlebih dahulu untuk menggunakan saldo</p>
                       )}
-                      {!isDisabled && selectedProduct && walletBalance !== null && walletBalance < selectedProduct.sellingPrice && (
+                      {!isDisabled && selectedProduct && walletBalance !== null && walletBalance < finalPrice && (
                         <p className="text-[10px] text-rose-500 mt-0.5">Saldo tidak cukup</p>
                       )}
                     </div>
@@ -907,46 +1001,107 @@ export default function BrandDetailPage({
             </p>
           </div>
 
-          {/* == How to Order Info == */}
-          <div className="px-4 py-4">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-              <div className="flex items-center gap-2 mb-3">
-                <svg
-                  className="w-4 h-4 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-slate-700">
-                  Cara Order
+          {/* == Voucher Section == */}
+          <div className="px-4 py-4 bg-white border-b border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+              <span className="text-sm font-semibold text-slate-700">Voucher</span>
+              {claimedVouchers.length > 0 && !appliedVoucher && (
+                <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
+                  {claimedVouchers.length} tersedia
                 </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {[
-                  `Masukkan ${inputFields.map((f) => f.label).join(" dan ")} kamu di atas`,
-                  "Pilih nominal/produk yang diinginkan",
-                  "Klik tombol Beli Sekarang",
-                  "Selesaikan pembayaran",
-                  "Produk akan diproses otomatis",
-                ].map((step, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-[10px] font-bold">{i + 1}</span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {step}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
+
+            {/* Applied voucher chip */}
+            {appliedVoucher ? (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3.5 py-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-bold text-green-800 truncate">{appliedVoucher.code}</p>
+                  <p className="text-[11px] text-green-600 truncate">{appliedVoucher.title}</p>
+                  <p className="text-[11px] font-semibold text-green-700">
+                    Hemat Rp {formatPrice(appliedVoucher.discountAmount)}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRemoveVoucher}
+                  className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center flex-shrink-0 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : walletLoading || claimedVouchersLoading ? (
+              <div className="h-12 bg-slate-100 rounded-xl animate-pulse" />
+            ) : !isLoggedIn ? (
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-3 hover:border-orange-300 hover:bg-orange-50 transition-all"
+              >
+                <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+                <p className="flex-1 text-left text-[12px] text-slate-500">Login untuk menggunakan voucher</p>
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ) : claimedVouchers.length === 0 ? (
+              <button
+                onClick={() => router.push("/voucher")}
+                className="w-full flex items-center gap-3 rounded-xl border border-dashed border-orange-200 bg-orange-50 px-3.5 py-3 hover:bg-orange-100 transition-all"
+              >
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[12px] font-semibold text-orange-700">Belum punya voucher</p>
+                  <p className="text-[11px] text-orange-500">Klaim voucher diskon di sini →</p>
+                </div>
+                <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowVoucherSheet(true)}
+                className="w-full flex items-center gap-3 rounded-xl border-2 border-orange-200 bg-orange-50 px-3.5 py-3 hover:border-orange-400 hover:bg-orange-100 transition-all"
+              >
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[12px] font-semibold text-orange-700">Pilih Voucher</p>
+                  <p className="text-[11px] text-orange-500">{claimedVouchers.length} voucher siap digunakan</p>
+                </div>
+                <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+
+            {voucherError && (
+              <p className="text-[11px] text-red-500 mt-2 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {voucherError}
+              </p>
+            )}
           </div>
 
           {/* == Footer == */}
@@ -1115,6 +1270,121 @@ export default function BrandDetailPage({
           </div>
         </div>
 
+        {/* ---- Voucher Selection Sheet ---- */}
+        <div
+          className={`fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 transition-all duration-300 ${
+            showVoucherSheet ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+          style={{ bottom: 0, height: "100%" }}
+        >
+          {/* Backdrop */}
+          <div
+            className={`absolute inset-0 bg-black transition-opacity duration-300 ${
+              showVoucherSheet ? "opacity-40" : "opacity-0"
+            }`}
+            onClick={() => setShowVoucherSheet(false)}
+          />
+          {/* Sheet */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+              showVoucherSheet ? "translate-y-0" : "translate-y-full"
+            }`}
+            style={{ maxHeight: "78vh" }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-300" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0 border-b border-slate-100">
+              <div>
+                <p className="text-[14px] font-bold text-orange-600">Voucher Saya</p>
+                <p className="text-[11px] text-slate-400">{claimedVouchers.length} voucher dapat digunakan</p>
+              </div>
+              <button
+                onClick={() => setShowVoucherSheet(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+              >
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Voucher list */}
+            <div
+              className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3"
+              style={{ scrollbarWidth: "thin", scrollbarColor: "#e2e8f0 transparent" }}
+            >
+              {claimedVouchers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3">
+                    <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-600 mb-1">Belum ada voucher</p>
+                  <p className="text-xs text-slate-400">Klaim voucher di halaman Voucher</p>
+                </div>
+              ) : (
+                claimedVouchers.map((v) => {
+                  const discountLabel = v.discountType === "PERCENT"
+                    ? `${v.discountValue}%${v.maxDiscount ? ` (maks Rp ${formatPrice(v.maxDiscount)})` : ""}`
+                    : `Rp ${formatPrice(v.discountValue)}`;
+                  const isInvalid = !!(selectedProduct && v.minPurchase > 0 && selectedProduct.sellingPrice < v.minPurchase);
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => { if (!isInvalid && !voucherLoading) handleSelectVoucher(v); }}
+                      disabled={isInvalid || voucherLoading}
+                      className={`w-full text-left rounded-2xl border-2 overflow-hidden transition-all ${
+                        isInvalid
+                          ? "border-slate-200 opacity-60 cursor-not-allowed"
+                          : "border-orange-200 hover:border-orange-400 hover:shadow-md active:scale-[0.99] cursor-pointer"
+                      }`}
+                    >
+                      <div className={`h-1.5 ${
+                        isInvalid ? "bg-slate-200" : "bg-gradient-to-r from-orange-400 to-yellow-400"
+                      }`} />
+                      <div className="px-3.5 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-bold text-slate-800 truncate">{v.title}</p>
+                            <p className="text-[11px] font-mono font-semibold text-orange-600 mt-0.5 tracking-wider">{v.code}</p>
+                          </div>
+                          <div className="flex-shrink-0 bg-orange-100 rounded-xl px-2.5 py-1.5 text-right">
+                            <p className="text-[12px] font-black text-orange-600 leading-tight whitespace-nowrap">{discountLabel}</p>
+                            <p className="text-[9px] text-orange-400 leading-tight">diskon</p>
+                          </div>
+                        </div>
+                        {v.description && (
+                          <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-2">{v.description}</p>
+                        )}
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 pt-2 border-t border-slate-100">
+                          {v.minPurchase > 0 && (
+                            <span className={`text-[10px] font-semibold ${
+                              isInvalid ? "text-red-400" : "text-slate-500"
+                            }`}>
+                              Min. Rp {formatPrice(v.minPurchase)}
+                            </span>
+                          )}
+                          {v.endDate && (
+                            <span className="text-[10px] text-slate-400">
+                              s/d {new Date(v.endDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          )}
+                          {isInvalid && (
+                            <span className="text-[10px] font-bold text-red-400 ml-auto">Tidak memenuhi syarat</span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ---- Sticky Bottom Bar ---- */}
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30">
           <div className="bg-white border-t border-slate-200 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
@@ -1125,9 +1395,23 @@ export default function BrandDetailPage({
                   <p className="text-xs text-slate-500 truncate">
                     {selectedProduct.name}
                   </p>
-                  <p className="text-lg font-bold text-slate-800">
-                    Rp {formatPrice(selectedProduct.sellingPrice)}
-                  </p>
+                  {appliedVoucher ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-lg font-bold text-slate-800">
+                        Rp {formatPrice(finalPrice)}
+                      </p>
+                      <p className="text-xs text-slate-400 line-through">
+                        Rp {formatPrice(selectedProduct.sellingPrice)}
+                      </p>
+                      <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                        Hemat Rp {formatPrice(appliedVoucher.discountAmount)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-bold text-slate-800">
+                      Rp {formatPrice(selectedProduct.sellingPrice)}
+                    </p>
+                  )}
                 </div>
 
                 {/* CTA button */}
@@ -1234,6 +1518,8 @@ export default function BrandDetailPage({
                     setCheckoutResult(null);
                     setSelectedProduct(null);
                     setPaymentMethod(null);
+                    setAppliedVoucher(null);
+                    setVoucherError(null);
                     setFieldValues(Object.fromEntries(inputFields.map((f) => [f.key, ""])));
                   }}
                   className="w-full py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors"

@@ -158,10 +158,6 @@ export default function GameGrid({ category }: GameGridProps) {
               onClick={() => router.push(`/brand/${brand.slug}`)}
               className="flex flex-col items-center gap-2 bg-white rounded-xl p-2 shadow-sm hover:shadow-md transition-shadow relative group"
             >
-              {/* Badge jumlah produk */}
-              <div className="absolute -top-1 -right-1 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full z-10 min-w-[20px] text-center">
-                {brand.productCount}
-              </div>
 
               <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
                 {image ? (

@@ -30,7 +30,7 @@ export default function BottomNavigation() {
   const navItems = [
     { id: "home", label: "Home", href: "/" },
     { id: "promo", label: "Promo", href: "/promo" },
-    { id: "deposit", label: "Deposit", href: "/deposit" },
+    { id: "deposit", label: "Deposit", href: "/topup" },
     { id: "transaksi", label: "Transaksi", href: "/transaksi" },
     { id: "akun", label: "Akun", href: "/akun" },
   ];
@@ -56,7 +56,7 @@ export default function BottomNavigation() {
   };
 
   const renderIcon = (id: string, active: boolean) => {
-    const color = active ? "#9333EA" : "#94A3B8";
+    const color = active ? "#003D99" : "#94A3B8";
 
     switch (id) {
       case "home":
@@ -92,9 +92,9 @@ export default function BottomNavigation() {
           return (
             <div
               className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
-                active ? "ring-2 ring-purple-400 ring-offset-1" : ""
+                active ? "ring-2 ring-[#003D99] ring-offset-1" : ""
               }`}
-              style={{ background: "#9333EA" }}
+              style={{ background: "#003D99" }}
             >
               {initials}
             </div>
@@ -124,10 +124,10 @@ export default function BottomNavigation() {
                 onClick={() => handleNavClick(nav)}
                 className="flex flex-col items-center -mt-8"
               >
-                <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-full p-4 shadow-xl mb-1">
+                <div className="bg-[#003D99] rounded-full p-4 shadow-xl mb-1">
                   {renderIcon(nav.id, true)}
                 </div>
-                <span className="text-xs font-medium text-purple-600">{nav.label}</span>
+                <span className="text-xs font-medium text-[#003D99]">{nav.label}</span>
               </button>
             );
           }
@@ -137,11 +137,11 @@ export default function BottomNavigation() {
               key={idx}
               onClick={() => handleNavClick(nav)}
               className={`flex flex-col items-center gap-1 py-2 transition-colors ${
-                active ? "text-purple-600" : "text-slate-400 hover:text-slate-600"
+                active ? "text-[#003D99]" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               {renderIcon(nav.id, active)}
-              <span className={`text-xs font-medium ${active ? "text-purple-600" : ""}`}>
+              <span className={`text-xs font-medium ${active ? "text-[#003D99]" : ""}`}>
                 {nav.label}
               </span>
             </button>
