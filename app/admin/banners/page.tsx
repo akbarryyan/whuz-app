@@ -132,25 +132,26 @@ export default function BannersPage() {
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
           {/* Title */}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-xl font-bold text-slate-800">🎨 Banner Carousel</h1>
               <p className="text-sm text-slate-500 mt-0.5">
-                Kelola gambar yang tampil di carousel halaman utama. Urutan dapat diatur dengan tombol panah.
+                Kelola gambar carousel halaman utama.
+                <span className="hidden sm:inline"> Urutan dapat diatur dengan tombol panah.</span>
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 sm:flex-shrink-0">
               <button
                 onClick={resetBanners}
                 disabled={saving || loading}
-                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors disabled:opacity-40"
+                className="flex-1 sm:flex-none px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors disabled:opacity-40"
               >
                 Reset default
               </button>
               <button
                 onClick={saveBanners}
                 disabled={saving || loading || banners.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors"
               >
                 {saving ? (
                   <>

@@ -455,7 +455,75 @@ export default function ProductsPage() {
               </div>
             ) : (
               <>
-                <div className="mt-5 overflow-x-auto">
+                {/* ── Mobile card list ── */}
+                <div className="mt-4 flex flex-col gap-3 sm:hidden">
+                  {currentProducts.map((product) => (
+                    <div key={product.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-800 text-sm" title={product.name}>
+                            {product.name}
+                          </p>
+                          <p className="mt-0.5 font-mono text-xs text-slate-400 truncate">{product.providerCode}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${product.isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                            {product.isActive ? "Aktif" : "Nonaktif"}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${product.stock ? "bg-blue-100 text-blue-600" : "bg-rose-100 text-rose-600"}`}>
+                            {product.stock ? "Stok" : "Habis"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-600">
+                          {product.provider.replace("_", " ")}
+                        </span>
+                        <span>{product.category}</span>
+                        <span>·</span>
+                        <span>{product.brand}</span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-white p-3 text-xs">
+                        <div>
+                          <p className="text-slate-400">Harga Provider</p>
+                          <p className="mt-0.5 font-medium text-slate-700">{formatCurrency(product.providerPrice)}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400">Margin</p>
+                          <p className="mt-0.5 font-medium text-emerald-600">+{formatCurrency(product.margin)}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400">Harga Jual</p>
+                          <p className="mt-0.5 font-semibold text-slate-800">{formatCurrency(product.sellingPrice)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => openEditModal(product)}
+                          className="flex-1 rounded-full bg-blue-100 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-200"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => toggleProductStatus(product)}
+                          className={`flex-1 rounded-full py-1.5 text-xs font-semibold transition ${
+                            product.isActive
+                              ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                          }`}
+                        >
+                          {product.isActive ? "Nonaktifkan" : "Aktifkan"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Desktop table ── */}
+                <div className="mt-5 hidden overflow-x-auto sm:block">
                   <table className="w-full table-fixed">
                     <colgroup>
                       <col className="w-[10%]" />
@@ -557,8 +625,9 @@ export default function ProductsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
 
-                  {filteredProducts.length > 0 && (
+                {filteredProducts.length > 0 && (
                     <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
                       <p className="text-sm text-slate-600">
                         Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredProducts.length)} dari {filteredProducts.length} produk
@@ -623,7 +692,6 @@ export default function ProductsPage() {
                       </p>
                     </div>
                   )}
-                </div>
               </>
             )}
           </div>

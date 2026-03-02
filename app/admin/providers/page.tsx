@@ -602,66 +602,105 @@ export default function ProvidersPage() {
               )}
             </div>
 
-            <div className="mt-5 overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col className="w-[13%]" />
-                  <col className="w-[25%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[8%]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-                    <th className="pb-3 pr-3 font-medium">Kode</th>
-                    <th className="pb-3 pr-3 font-medium">Nama Produk</th>
-                    <th className="pb-3 pr-3 font-medium">Kategori</th>
-                    <th className="pb-3 pr-3 font-medium">Brand</th>
-                    <th className="pb-3 pr-3 font-medium">Harga Provider</th>
-                    <th className="pb-3 pr-3 font-medium">Margin</th>
-                    <th className="pb-3 pr-3 font-medium">Harga Jual</th>
-                    <th className="pb-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentProducts.map((product, idx) => (
-                    <tr
-                      key={`${product.code}-${idx}`}
-                      className="border-b border-slate-50 text-sm transition hover:bg-slate-50"
-                    >
-                      <td className="py-3 pr-3 font-mono text-xs text-slate-600 truncate max-w-0" title={product.code}>{product.code}</td>
-                      <td className="py-3 pr-3 font-medium text-slate-800 max-w-0">
-                        <span className="block truncate" title={product.name}>{product.name}</span>
-                      </td>
-                      <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.category}>{product.category}</td>
-                      <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.brand}>{product.brand}</td>
-                      <td className="py-3 pr-3 text-slate-600 whitespace-nowrap">
-                        {formatCurrency(product.providerPrice)}
-                      </td>
-                      <td className="py-3 pr-3 font-medium text-emerald-600 whitespace-nowrap">
-                        +{formatCurrency(product.margin)}
-                      </td>
-                      <td className="py-3 pr-3 font-semibold text-slate-800 whitespace-nowrap">
-                        {formatCurrency(product.sellingPrice)}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            product.stock
-                              ? "bg-emerald-100 text-emerald-600"
-                              : "bg-rose-100 text-rose-600"
-                          }`}
-                        >
-                          {product.stock ? "Tersedia" : "Habis"}
-                        </span>
-                      </td>
+            <div className="mt-4">
+              {/* ── Mobile card list ── */}
+              <div className="flex flex-col gap-3 sm:hidden">
+                {currentProducts.map((product, idx) => (
+                  <div key={`${product.code}-${idx}`} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-800 text-sm" title={product.name}>{product.name}</p>
+                        <p className="mt-0.5 font-mono text-xs text-slate-400 truncate">{product.code}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${product.stock ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                        {product.stock ? "Tersedia" : "Habis"}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                      <span>{product.category}</span>
+                      <span>·</span>
+                      <span>{product.brand}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-white p-3 text-xs">
+                      <div>
+                        <p className="text-slate-400">Harga Provider</p>
+                        <p className="mt-0.5 font-medium text-slate-700">{formatCurrency(product.providerPrice)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Margin</p>
+                        <p className="mt-0.5 font-medium text-emerald-600">+{formatCurrency(product.margin)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Harga Jual</p>
+                        <p className="mt-0.5 font-semibold text-slate-800">{formatCurrency(product.sellingPrice)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Desktop table ── */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col className="w-[13%]" />
+                    <col className="w-[25%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[8%]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                      <th className="pb-3 pr-3 font-medium">Kode</th>
+                      <th className="pb-3 pr-3 font-medium">Nama Produk</th>
+                      <th className="pb-3 pr-3 font-medium">Kategori</th>
+                      <th className="pb-3 pr-3 font-medium">Brand</th>
+                      <th className="pb-3 pr-3 font-medium">Harga Provider</th>
+                      <th className="pb-3 pr-3 font-medium">Margin</th>
+                      <th className="pb-3 pr-3 font-medium">Harga Jual</th>
+                      <th className="pb-3 font-medium">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentProducts.map((product, idx) => (
+                      <tr
+                        key={`${product.code}-${idx}`}
+                        className="border-b border-slate-50 text-sm transition hover:bg-slate-50"
+                      >
+                        <td className="py-3 pr-3 font-mono text-xs text-slate-600 truncate max-w-0" title={product.code}>{product.code}</td>
+                        <td className="py-3 pr-3 font-medium text-slate-800 max-w-0">
+                          <span className="block truncate" title={product.name}>{product.name}</span>
+                        </td>
+                        <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.category}>{product.category}</td>
+                        <td className="py-3 pr-3 text-slate-600 truncate max-w-0" title={product.brand}>{product.brand}</td>
+                        <td className="py-3 pr-3 text-slate-600 whitespace-nowrap">
+                          {formatCurrency(product.providerPrice)}
+                        </td>
+                        <td className="py-3 pr-3 font-medium text-emerald-600 whitespace-nowrap">
+                          +{formatCurrency(product.margin)}
+                        </td>
+                        <td className="py-3 pr-3 font-semibold text-slate-800 whitespace-nowrap">
+                          {formatCurrency(product.sellingPrice)}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${
+                              product.stock
+                                ? "bg-emerald-100 text-emerald-600"
+                                : "bg-rose-100 text-rose-600"
+                            }`}
+                          >
+                            {product.stock ? "Tersedia" : "Habis"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {filteredProducts.length > 0 && (
                 <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">

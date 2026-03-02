@@ -41,12 +41,12 @@ export default function PageFooter() {
   ]);
 
   return (
-    <footer className="bg-white border-t border-slate-100 px-5 pt-6 pb-6">
+    <footer className="bg-white border-t border-slate-100 px-5 pt-6 pb-28">
       {/* Logo + tagline */}
       <div className="mb-4">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoUrl} alt="WhuzPay" className="h-7 w-auto object-contain mb-2" />
+          <img src={logoUrl} alt="WhuzPay" className="h-10 w-auto object-contain mb-2" />
         ) : (
           <div className="flex items-center gap-1.5 mb-2">
             <div className="bg-[#003D99] rounded-lg px-2 py-1">
@@ -55,7 +55,7 @@ export default function PageFooter() {
             <span className="text-slate-800 font-bold text-base">WhuzPay</span>
           </div>
         )}
-        <p className="text-[11px] text-blue-600 font-semibold leading-snug">{tagline}</p>
+        <p className="text-[11px] text-slate-500 font-semibold leading-snug">{tagline}</p>
       </div>
 
       {/* Nav links */}
@@ -70,12 +70,12 @@ export default function PageFooter() {
 
       {/* Help card */}
       <a href="/pusat-bantuan" className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 mb-5 hover:bg-slate-100 transition-colors">
-        <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-          <span className="text-purple-600 text-lg font-bold">?</span>
+        <div className="w-9 h-9 rounded-full bg-[#003D99] flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-lg font-bold">?</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-slate-500 leading-none mb-0.5">Punya Pertanyaan?</p>
-          <p className="text-[12px] text-[#003D99] font-bold">
+          <p className="text-[12px] text-[#003D99] font-semibold">
             Cek Pusat Bantuan{" "}
             <span className="text-[#003D99]">&rsaquo;</span>
           </p>
@@ -83,8 +83,8 @@ export default function PageFooter() {
       </a>
 
       {/* Payment methods — from footer config (same as home Footer) */}
-      <div className="mb-5">
-        <p className="text-[11px] font-bold text-slate-700 mb-2.5">Pembayaran Lengkap</p>
+      <div className="mb-2">
+        <p className="text-[11px] font-bold text-slate-700">Pembayaran Lengkap</p>
         <div className="flex flex-wrap gap-2 items-center">
           {paymentMethods.map((pm) =>
             pm.img ? (

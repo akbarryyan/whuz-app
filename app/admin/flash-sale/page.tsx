@@ -204,7 +204,7 @@ export default function FlashSalePage() {
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
           {/* Title */}
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-xl font-bold text-slate-800">⚡ Flash Sale</h1>
               <p className="text-sm text-slate-500 mt-0.5">
@@ -214,7 +214,7 @@ export default function FlashSalePage() {
             <button
               onClick={save}
               disabled={saving || loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors flex-shrink-0"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors sm:flex-shrink-0 w-full sm:w-auto"
             >
               {saving ? (
                 <>
@@ -284,16 +284,17 @@ export default function FlashSalePage() {
 
               {/* ── Products ─────────────────────────────────────────────── */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <div>
+                <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <h2 className="text-sm font-bold text-slate-700">Produk Flash Sale</h2>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {config.products.length} produk · Urutan tampilan dapat diubah dengan panah
+                    <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                      {config.products.length} produk
+                      <span className="hidden sm:inline"> · Urutan dapat diubah dengan panah</span>
                     </p>
                   </div>
                   <button
                     onClick={openAddForm}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors"
+                    className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors"
                   >
                     + Tambah
                   </button>
@@ -308,53 +309,88 @@ export default function FlashSalePage() {
                 ) : (
                   <div className="divide-y divide-slate-50">
                     {config.products.map((p, idx) => (
-                      <div key={p.id} className="px-4 py-3 flex items-center gap-3">
-                        {/* Brand image */}
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
-                          {p.brandImage ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.brandImage} alt={p.brand} className="w-8 h-8 object-contain" />
-                          ) : (
-                            <span className="text-xs font-bold text-purple-400">{(p.brand ?? "??").slice(0, 2).toUpperCase()}</span>
-                          )}
-                        </div>
+                      <div key={p.id} className="px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        {/* Top row: brand image + info + controls (desktop) */}
+                        <div className="flex items-center gap-3">
+                          {/* Brand image */}
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
+                            {p.brandImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.brandImage} alt={p.brand} className="w-8 h-8 object-contain" />
+                            ) : (
+                              <span className="text-xs font-bold text-purple-400">{(p.brand ?? "??").slice(0, 2).toUpperCase()}</span>
+                            )}
+                          </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-700 truncate">{p.name}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{p.badge}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-slate-400 line-through">{p.originalPrice}</span>
-                            <span className="text-[10px] font-bold text-red-500">{p.discount} OFF</span>
-                            <span className="text-[10px] font-bold text-purple-600">{p.price}</span>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{p.name}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{p.badge}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-[10px] text-slate-400 line-through">{p.originalPrice}</span>
+                              <span className="text-[10px] font-bold text-red-500">{p.discount} OFF</span>
+                              <span className="text-[10px] font-bold text-purple-600">{p.price}</span>
+                            </div>
+                          </div>
+
+                          {/* Controls — desktop only (hidden on mobile, shown below) */}
+                          <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => moveProduct(idx, -1)} disabled={idx === 0}
+                              className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button onClick={() => moveProduct(idx, 1)} disabled={idx === config.products.length - 1}
+                              className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            <button onClick={() => openEditForm(p)}
+                              className="w-7 h-7 rounded-lg hover:bg-blue-50 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => removeProduct(p.id)}
+                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
 
-                        {/* Controls */}
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        {/* Controls — mobile only */}
+                        <div className="flex sm:hidden items-center gap-2">
                           <button onClick={() => moveProduct(idx, -1)} disabled={idx === 0}
-                            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-medium disabled:opacity-30 hover:bg-slate-200 transition-colors">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
                             </svg>
+                            Naik
                           </button>
                           <button onClick={() => moveProduct(idx, 1)} disabled={idx === config.products.length - 1}
-                            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:opacity-25 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-medium disabled:opacity-30 hover:bg-slate-200 transition-colors">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                             </svg>
+                            Turun
                           </button>
                           <button onClick={() => openEditForm(p)}
-                            className="w-7 h-7 rounded-lg hover:bg-blue-50 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[11px] font-medium hover:bg-blue-100 transition-colors">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
+                            Edit
                           </button>
                           <button onClick={() => removeProduct(p.id)}
-                            className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-50 text-red-500 text-[11px] font-medium hover:bg-red-100 transition-colors">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
+                            Hapus
                           </button>
                         </div>
                       </div>

@@ -34,7 +34,7 @@ export default function PromoPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState(
-    "https://www.vcgamers.com/_next/static/media/image-percent.4146a3ec.png"
+    "https://i.postimg.cc/fkmgL3hH/image-percent-4146a3ec.png"
   );
 
   useEffect(() => {
@@ -94,9 +94,9 @@ export default function PromoPage() {
             {/* Right: discount badge image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={heroImageUrl}
+              src="https://i.postimg.cc/fkmgL3hH/image-percent-4146a3ec.png"
               alt="promo"
-              className="h-16 w-auto object-contain flex-shrink-0"
+              className="h-16 w-auto -mb-4 object-contain flex-shrink-0"
             />
           </div>
 
