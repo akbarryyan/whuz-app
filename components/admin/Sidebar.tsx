@@ -56,15 +56,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      {/*
-        Desktop spacer — takes up sidebar width in the flex row
-        so the content column isn't hidden behind the fixed sidebar.
-      */}
-      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0" />
-
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-full w-64 transform flex-col rounded-r-3xl bg-white p-6 shadow-xl transition-transform duration-300 ease-in-out lg:h-screen lg:shadow-sm ${
+        className={`fixed left-0 top-0 z-50 flex h-full w-64 transform flex-col bg-white p-6 shadow-xl transition-transform duration-300 ease-in-out lg:h-screen lg:shadow-sm ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >

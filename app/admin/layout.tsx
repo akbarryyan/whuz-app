@@ -15,10 +15,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return <AdminGuard>{children}</AdminGuard>;
 }
 
+
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAdminAuth();
 
   if (loading) {
+
     return (
       <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -34,5 +36,6 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <>{children}</>;
+  return <div className="lg:pl-64">{children}</div>;
 }
+
