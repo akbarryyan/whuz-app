@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -65,7 +65,7 @@ interface OrderItem {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function PesananPage() {
+function PesananPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -481,5 +481,13 @@ export default function PesananPage() {
         <BottomNavigation />
       </div>
     </div>
+  );
+}
+
+export default function PesananPage() {
+  return (
+    <Suspense fallback={null}>
+      <PesananPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import AppHeader from "@/components/AppHeader";
@@ -43,7 +43,7 @@ function formatDateTime(iso: string) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-export default function TopupStatusPage({
+function TopupStatusPageContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -317,5 +317,17 @@ export default function TopupStatusPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TopupStatusPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <TopupStatusPageContent params={params} />
+    </Suspense>
   );
 }

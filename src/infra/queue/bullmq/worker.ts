@@ -13,16 +13,14 @@ import { QUEUE_NAME, JobData, JobName, ExecuteProviderPurchaseData, ReconcileOrd
 import { ExecuteProviderPurchaseService } from "@/src/core/services/provider/execute-provider-purchase.service";
 import { ReconcileOrderService } from "@/src/core/services/provider/reconcile-order.service";
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
-import { BullMQQueueAdapter } from "./queue";
 
 const connection: ConnectionOptions = {
   url: process.env.REDIS_URL ?? "redis://localhost:6379",
 };
 
 const orderRepository = new OrderRepository();
-const queue = new BullMQQueueAdapter();
-const executeService = new ExecuteProviderPurchaseService(orderRepository, queue);
-const reconcileService = new ReconcileOrderService(orderRepository, queue);
+const executeService = new ExecuteProviderPurchaseService(orderRepository);
+const reconcileService = new ReconcileOrderService(orderRepository);
 
 const worker = new Worker<JobData, void, JobName>(
   QUEUE_NAME,

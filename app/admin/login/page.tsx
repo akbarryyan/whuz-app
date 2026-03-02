@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { ToastContainer } from "@/components/ui/Toast";
 
-export default function AdminLoginPage() {
+function AdminLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -187,5 +187,13 @@ export default function AdminLoginPage() {
 
       <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLoginPageContent />
+    </Suspense>
   );
 }

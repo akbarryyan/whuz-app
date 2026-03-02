@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Quicksand } from "next/font/google";
 
@@ -63,7 +63,7 @@ function useCountdown(seconds: number) {
   return { remaining, formatted: `${mm}:${ss}` };
 }
 
-export default function MockPaymentPage({
+function MockPaymentPageContent({
   params,
 }: {
   params: Promise<{ invoiceId: string }>;
@@ -295,5 +295,17 @@ export default function MockPaymentPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MockPaymentPage({
+  params,
+}: {
+  params: Promise<{ invoiceId: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <MockPaymentPageContent params={params} />
+    </Suspense>
   );
 }

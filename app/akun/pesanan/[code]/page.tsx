@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Quicksand } from "next/font/google";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -64,7 +64,7 @@ interface OrderDetail {
   } | null;
 }
 
-export default function OrderDetailPage() {
+function OrderDetailPageContent() {
   const router = useRouter();
   const params = useParams<{ code: string }>();
   const searchParams = useSearchParams();
@@ -430,5 +430,13 @@ export default function OrderDetailPage() {
         <BottomNavigation />
       </div>
     </div>
+  );
+}
+
+export default function OrderDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderDetailPageContent />
+    </Suspense>
   );
 }

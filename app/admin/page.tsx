@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { ToastContainer } from "@/components/ui/Toast";
@@ -12,7 +12,7 @@ import TransactionTable from "@/components/admin/TransactionTable";
 import ProviderStatus from "@/components/admin/ProviderStatus";
 import CustomerSupport from "@/components/admin/CustomerSupport";
 
-export default function AdminDashboardPage() {
+function AdminDashboardPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -51,5 +51,13 @@ export default function AdminDashboardPage() {
 
       <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminDashboardPageContent />
+    </Suspense>
   );
 }

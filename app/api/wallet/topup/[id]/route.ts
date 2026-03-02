@@ -12,9 +12,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getSession();
     if (!session.isLoggedIn || !session.userId) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
@@ -22,7 +23,7 @@ export async function GET(
 
     const topup = await prisma.walletTopup.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.userId, // ensure ownership
       },
       select: {
