@@ -126,7 +126,7 @@ export default function Header() {
               </span>
             )}
           </a>
-          <div className="relative">
+          <div className="relative mt-1.5">
             <button
               ref={bellRef}
               onClick={() => setNotifOpen((v) => !v)}
