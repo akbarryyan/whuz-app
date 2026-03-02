@@ -1,6 +1,6 @@
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
 import { IPaymentGatewayPort } from "@/src/core/ports/payment-gateway.port";
-import { IQueuePort } from "@/src/core/ports/queue.port";
+import { ExecuteProviderPurchaseService } from "@/src/core/services/provider/execute-provider-purchase.service";
 import { OrderStatus, InvoiceStatus, WebhookSource } from "@/src/core/domain/enums/order.enum";
 import { DuplicateWebhookError } from "@/src/core/domain/errors/domain.errors";
 
@@ -19,24 +19,29 @@ export interface PakasirWebhookPayload {
 
 export interface WebhookHandleResult {
   duplicate: boolean;
-  action: "enqueued" | "ignored" | "already_paid";
+  action: "executed" | "ignored" | "already_paid" | "execute_failed";
   orderId?: string;
+  executeError?: string;
 }
 
 /**
  * HandlePakasirWebhookService
  *
- * Non-negotiables (constitution §6.1, §2.1):
- * - Idempotent: uses WebhookEvent.eventId for deduplication.
- * - Must call gateway.detailPayment(order_id, amount) to cross-check before marking PAID.
- * - Provider purchase enqueued via queue (never executed inline).
+ * Flow baru (tanpa BullMQ):
+ * - Idempotent via WebhookEvent.eventId (deduplication).
+ * - Cross-check dengan gateway detailPayment.
+ * - Execute provider LANGSUNG (inline) saat PAID, bukan enqueue.
+ * - Anti double-execute: ExecuteProviderPurchaseService punya atomic claim.
  */
 export class HandlePakasirWebhookService {
+  private readonly executeService: ExecuteProviderPurchaseService;
+
   constructor(
     private readonly orderRepo: OrderRepository,
     private readonly paymentGateway: IPaymentGatewayPort,
-    private readonly queue: IQueuePort
-  ) {}
+  ) {
+    this.executeService = new ExecuteProviderPurchaseService(orderRepo);
+  }
 
   async handle(
     payload: PakasirWebhookPayload,
@@ -126,11 +131,15 @@ export class HandlePakasirWebhookService {
     // ── Transition order to PAID ────────────────────────────────────────────
     await this.orderRepo.updateStatus(order.id, OrderStatus.PAID);
 
-    // ── Enqueue provider purchase (never inline — constitution §2.2) ────────
-    await this.queue.enqueueProviderPurchase(order.id);
-
-    console.log(`[Webhook/Pakasir] Order ${order.id} marked PAID → purchase enqueued`);
-
-    return { action: "enqueued", orderId: order.id };
+    // ── Execute provider LANGSUNG (inline) ──────────────────────────────────
+    try {
+      await this.executeService.execute(order.id);
+      console.log(`[Webhook/Pakasir] Order ${order.id} marked PAID → provider executed langsung`);
+      return { action: "executed" as const, orderId: order.id };
+    } catch (execErr: any) {
+      // Provider execution gagal tapi order tetap PAID — admin bisa reconcile
+      console.error(`[Webhook/Pakasir] Order ${order.id} PAID tapi execute gagal:`, execErr.message);
+      return { action: "execute_failed" as const, orderId: order.id, executeError: execErr.message };
+    }
   }
 }

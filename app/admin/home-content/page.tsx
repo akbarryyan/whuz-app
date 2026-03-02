@@ -193,7 +193,7 @@ export default function HomeContentPage() {
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
           {/* Title */}
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-xl font-bold text-slate-800">📝 Konten Halaman Utama</h1>
               <p className="text-sm text-slate-500 mt-0.5">
@@ -204,14 +204,14 @@ export default function HomeContentPage() {
               <button
                 onClick={resetDefaults}
                 disabled={saving || loading}
-                className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                className="flex-1 sm:flex-none justify-center px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
               >
                 Reset Default
               </button>
               <button
                 onClick={save}
                 disabled={saving || loading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] disabled:opacity-50 transition-colors"
               >
                 {saving ? (
                   <>
@@ -315,10 +315,10 @@ export default function HomeContentPage() {
               {/* ── FAQ ───────────────────────────────────────────────── */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-sm font-bold text-slate-700">❓ FAQ</h2>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {faqs.length} pertanyaan · 5 pertama tampil, sisanya di &quot;Baca Selengkapnya&quot;
+                      {faqs.length} pertanyaan<span className="hidden sm:inline"> · 5 pertama tampil, sisanya di &quot;Baca Selengkapnya&quot;</span>
                     </p>
                   </div>
                   <button
@@ -338,15 +338,18 @@ export default function HomeContentPage() {
                 ) : (
                   <div className="divide-y divide-slate-50">
                     {faqs.map((faq, idx) => (
-                      <div key={idx} className="px-4 py-3 flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-600 flex-shrink-0 mt-0.5">
-                          {idx + 1}
+                      <div key={idx} className="px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-600 flex-shrink-0 mt-0.5">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{faq.question}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{faq.answer}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-700 truncate">{faq.question}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{faq.answer}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        {/* Desktop controls */}
+                        <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
                           <button onClick={() => moveFaq(idx, -1)} disabled={idx === 0}
                             className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 disabled:opacity-25 transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,6 +373,25 @@ export default function HomeContentPage() {
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
+                          </button>
+                        </div>
+                        {/* Mobile controls */}
+                        <div className="flex sm:hidden items-center gap-2">
+                          <button onClick={() => moveFaq(idx, -1)} disabled={idx === 0}
+                            className="flex-1 py-1.5 rounded-lg bg-slate-100 text-[11px] font-semibold text-slate-600 disabled:opacity-25 transition-colors">
+                            Naik
+                          </button>
+                          <button onClick={() => moveFaq(idx, 1)} disabled={idx === faqs.length - 1}
+                            className="flex-1 py-1.5 rounded-lg bg-slate-100 text-[11px] font-semibold text-slate-600 disabled:opacity-25 transition-colors">
+                            Turun
+                          </button>
+                          <button onClick={() => openEditFaq(idx)}
+                            className="flex-1 py-1.5 rounded-lg bg-blue-50 text-[11px] font-semibold text-blue-600 transition-colors">
+                            Edit
+                          </button>
+                          <button onClick={() => removeFaq(idx)}
+                            className="flex-1 py-1.5 rounded-lg bg-red-50 text-[11px] font-semibold text-red-500 transition-colors">
+                            Hapus
                           </button>
                         </div>
                       </div>

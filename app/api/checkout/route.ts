@@ -10,7 +10,6 @@ import { z } from "zod";
 import { CreateCheckoutService } from "@/src/core/services/checkout/create-checkout.service";
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
 import { PakasirAdapter } from "@/src/infra/payment/pakasir/pakasir.adapter";
-import { BullMQQueueAdapter } from "@/src/infra/queue/bullmq/queue";
 import { getSession } from "@/lib/session";
 import { getPakasirMode } from "@/lib/site-config";
 import { prisma } from "@/src/infra/db/prisma";
@@ -145,7 +144,6 @@ export async function POST(request: Request) {
     const checkoutService = new CreateCheckoutService(
       new OrderRepository(),
       paymentGateway,
-      new BullMQQueueAdapter()
     );
 
     const result = await checkoutService.execute({

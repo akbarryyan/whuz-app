@@ -16,7 +16,6 @@ import { NextResponse } from "next/server";
 import { HandlePakasirWebhookService } from "@/src/core/services/payment/handle-pakasir-webhook.service";
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
 import { PakasirAdapter } from "@/src/infra/payment/pakasir/pakasir.adapter";
-import { BullMQQueueAdapter } from "@/src/infra/queue/bullmq/queue";
 import { getPakasirMode } from "@/lib/site-config";
 import { handleWalletTopupWebhook } from "@/lib/wallet-topup-webhook";
 
@@ -61,9 +60,8 @@ export async function POST(request: Request) {
   const orderRepo = new OrderRepository();
   const pakasirMode = await getPakasirMode();
   const paymentGateway = new PakasirAdapter(pakasirMode);
-  const queue = new BullMQQueueAdapter();
 
-  const service = new HandlePakasirWebhookService(orderRepo, paymentGateway, queue);
+  const service = new HandlePakasirWebhookService(orderRepo, paymentGateway);
 
   try {
     const result = await service.handle(payload, rawBody);

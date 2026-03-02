@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { prisma } from "@/src/infra/db/prisma";
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
 import { IPaymentGatewayPort } from "@/src/core/ports/payment-gateway.port";
-import { IQueuePort } from "@/src/core/ports/queue.port";
+import { ExecuteProviderPurchaseService } from "@/src/core/services/provider/execute-provider-purchase.service";
 import { OrderStatus, PaymentMethod } from "@/src/core/domain/enums/order.enum";
 import {
   ValidationError,
@@ -41,18 +41,21 @@ export interface CheckoutResult {
 /**
  * CreateCheckoutService
  *
- * Rules (constitution):
+ * Rules:
  * - Guest can only use PAYMENT_GATEWAY.
- * - Provider purchase is NEVER executed inside this request (enqueued only).
- * - view_token raw value returned to guest but NEVER stored; only hash stored.
+ * - Wallet: execute provider LANGSUNG (inline) setelah hold balance.
+ * - Payment Gateway: tunggu webhook PAID, baru execute provider.
  * - Pricing snapshot (basePrice, markup, fee, amount) frozen at creation time.
  */
 export class CreateCheckoutService {
+  private readonly executeService: ExecuteProviderPurchaseService;
+
   constructor(
     private readonly orderRepo: OrderRepository,
     private readonly paymentGateway: IPaymentGatewayPort,
-    private readonly queue: IQueuePort
-  ) {}
+  ) {
+    this.executeService = new ExecuteProviderPurchaseService(orderRepo);
+  }
 
   async execute(input: CheckoutInput): Promise<CheckoutResult> {
     // ── 1. Validate input ──────────────────────────────────────────────────
@@ -143,13 +146,23 @@ export class CreateCheckoutService {
         throw new InsufficientBalanceError();
       }
 
-      // Wallet orders go straight to queue
+      // Wallet orders: mark PAID lalu execute provider langsung
       await this.orderRepo.updateStatus(order.id, OrderStatus.PAID);
-      await this.queue.enqueueProviderPurchase(order.id);
+
+      // Execute provider langsung (inline) — idempotent via atomic claim
+      try {
+        await this.executeService.execute(order.id);
+      } catch (execErr: any) {
+        // Execute gagal tapi order sudah PAID — admin bisa reconcile
+        console.error(`[Checkout] Wallet order ${order.id} execute gagal:`, execErr.message);
+      }
+
+      // Re-fetch order untuk return status terbaru
+      const updatedOrder = await this.orderRepo.findById(order.id);
 
       return {
         orderCode,
-        status: OrderStatus.PAID,
+        status: updatedOrder?.status ?? OrderStatus.PAID,
         amount,
         viewToken,
       };

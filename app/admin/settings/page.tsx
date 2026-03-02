@@ -218,8 +218,7 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-800">⚙️ Pengaturan Sistem</h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              Kelola mode operasi provider &amp; payment gateway. Perubahan disimpan ke database
-              dan berlaku segera tanpa perlu restart.
+              Kelola mode operasi provider &amp; payment gateway.<span className="hidden sm:inline"> Perubahan disimpan ke database dan berlaku segera tanpa perlu restart.</span>
             </p>
           </div>
 
@@ -272,7 +271,7 @@ export default function SettingsPage() {
                 const isReal = effectiveMode === provider.onValue;
 
                 return (
-                  <div key={provider.key} className="px-5 py-4 flex items-center gap-4">
+                  <div key={provider.key} className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     {/* Icon */}
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${
                       isReal ? "bg-green-100" : "bg-amber-50"
@@ -359,7 +358,7 @@ export default function SettingsPage() {
               {/* Site Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Nama Website</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={siteName}
@@ -370,7 +369,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => saveSiteSetting("site_name", siteName, "Nama Website")}
                     disabled={siteSaving === "site_name"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
                   >
                     {siteSaving === "site_name" ? "..." : "💾 Simpan"}
                   </button>
@@ -380,7 +379,7 @@ export default function SettingsPage() {
               {/* Site Logo */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">URL Logo</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="url"
                     value={siteLogo}
@@ -391,7 +390,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => saveSiteSetting("site_logo", siteLogo, "Logo")}
                     disabled={siteSaving === "site_logo"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
                   >
                     {siteSaving === "site_logo" ? "..." : "💾 Simpan"}
                   </button>
@@ -408,7 +407,7 @@ export default function SettingsPage() {
               {/* Site Favicon */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">URL Favicon</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="url"
                     value={siteFavicon}
@@ -419,7 +418,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => saveSiteSetting("site_favicon", siteFavicon, "Favicon")}
                     disabled={siteSaving === "site_favicon"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
                   >
                     {siteSaving === "site_favicon" ? "..." : "💾 Simpan"}
                   </button>
@@ -436,7 +435,7 @@ export default function SettingsPage() {
               {/* Site Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Deskripsi (Meta Description)</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <textarea
                     value={siteDescription}
                     onChange={(e) => setSiteDescription(e.target.value)}
@@ -447,7 +446,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => saveSiteSetting("site_description", siteDescription, "Deskripsi")}
                     disabled={siteSaving === "site_description"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0 self-start"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0 sm:self-start"
                   >
                     {siteSaving === "site_description" ? "..." : "💾 Simpan"}
                   </button>
@@ -457,7 +456,7 @@ export default function SettingsPage() {
               {/* Site Keywords */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Keywords (Meta Keywords)</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={siteKeywords}
@@ -468,7 +467,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => saveSiteSetting("site_keywords", siteKeywords, "Keywords")}
                     disabled={siteSaving === "site_keywords"}
-                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
                   >
                     {siteSaving === "site_keywords" ? "..." : "💾 Simpan"}
                   </button>

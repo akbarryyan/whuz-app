@@ -152,16 +152,16 @@ export default function TiersPage() {
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
           {/* Title */}
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-xl font-bold text-slate-800">🏷️ Tier Harga</h1>
               <p className="text-sm text-slate-500 mt-0.5">
-                Kelola tier pengguna. Tiap tier mendapat harga berbeda berdasarkan multiplier margin.
+                Kelola tier pengguna.<span className="hidden sm:inline"> Tiap tier mendapat harga berbeda berdasarkan multiplier margin.</span>
               </p>
             </div>
             <button
               onClick={openAdd}
-              className="flex-shrink-0 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] transition-colors"
+              className="w-full sm:w-auto flex-shrink-0 px-4 py-2 rounded-xl bg-[#003D99] text-white text-xs font-bold hover:bg-[#002d73] transition-colors"
             >
               + Tambah Tier
             </button>

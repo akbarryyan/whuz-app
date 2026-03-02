@@ -85,6 +85,22 @@ export class OrderRepository {
     });
   }
 
+  /**
+   * Atomic claim: transitions order from PAID → PROCESSING_PROVIDER.
+   * Uses updateMany with WHERE status check so only ONE caller wins the race.
+   * Returns true if this caller successfully claimed the order.
+   */
+  async claimForProcessing(orderId: string): Promise<boolean> {
+    const result = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        status: { in: [OrderStatus.PAID, OrderStatus.CREATED] },
+      },
+      data: { status: OrderStatus.PROCESSING_PROVIDER },
+    });
+    return result.count > 0;
+  }
+
   async updateStatus(orderId: string, status: OrderStatus, extra?: {
     serialNumber?: string;
     providerRef?: string;

@@ -1,5 +1,5 @@
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
-import { IQueuePort } from "@/src/core/ports/queue.port";
+import { ExecuteProviderPurchaseService } from "./execute-provider-purchase.service";
 import { ProviderFactory } from "@/src/infra/providers/provider.factory";
 import { ProviderType } from "@/src/core/domain/enums/provider.enum";
 import { OrderStatus } from "@/src/core/domain/enums/order.enum";
@@ -8,18 +8,23 @@ import { checkAndUpgradeUserTier } from "@/lib/pricing";
 /**
  * ReconcileOrderService
  *
- * Used by:
- *  - Worker job RECONCILE_ORDER (scheduled after PENDING provider response)
+ * Dipanggil langsung (inline) oleh:
  *  - Admin "Reconcile" button via POST /api/admin/transactions/:id/reconcile
- *  - Optional cron job
+ *  - Admin "Reconcile All" via POST /api/admin/transactions/reconcile-all
+ *  - (Opsional) cron job
  *
- * Checks current provider status and transitions order accordingly.
+ * Tidak lagi menggunakan BullMQ queue.
+ * Jika belum ada providerRef → panggil executeService.execute() langsung.
+ * Jika sudah ada providerRef → checkStatus ke provider.
  */
 export class ReconcileOrderService {
+  private readonly executeService: ExecuteProviderPurchaseService;
+
   constructor(
     private readonly orderRepo: OrderRepository,
-    private readonly queue: IQueuePort
-  ) {}
+  ) {
+    this.executeService = new ExecuteProviderPurchaseService(orderRepo);
+  }
 
   async reconcile(orderId: string): Promise<{ status: string; message: string }> {
     const order = await this.orderRepo.findById(orderId);
@@ -44,10 +49,10 @@ export class ReconcileOrderService {
     // For mock/real providers that support status check, call provider.purchase
     // with idempotency (provider won't double-charge if ref exists).
 
-    // If no providerRef yet → re-enqueue execute
+    // If no providerRef yet → jalankan execute langsung (bukan enqueue)
     if (!order.providerRef) {
-      await this.queue.enqueueProviderPurchase(orderId, 0);
-      return { status: "requeued", message: "No providerRef — re-enqueued execute job" };
+      await this.executeService.execute(orderId);
+      return { status: "re-executed", message: "No providerRef — execute dipanggil langsung" };
     }
 
     // Log reconcile attempt
@@ -65,8 +70,7 @@ export class ReconcileOrderService {
       checkResult = await provider.checkStatus(order.providerRef);
     } catch (err: any) {
       console.error(`[Reconcile] checkStatus failed for order ${orderId}:`, err.message);
-      await this.queue.enqueueReconcile(orderId, 5 * 60 * 1000);
-      return { status: "error", message: `checkStatus error: ${err.message}` };
+      return { status: "error", message: `checkStatus error: ${err.message}. Coba lagi nanti.` };
     }
 
     await this.orderRepo.logProviderAction({
@@ -108,10 +112,9 @@ export class ReconcileOrderService {
       return { status: "failed", message: "Order reconciled to FAILED" };
 
     } else {
-      // Still pending — schedule another check in 5 minutes
-      await this.queue.enqueueReconcile(orderId, 5 * 60 * 1000);
-      console.log(`[Reconcile] Order ${orderId} still PENDING. Re-scheduled in 5 min.`);
-      return { status: "pending", message: "Still pending — reconcile re-scheduled in 5 minutes" };
+      // Masih pending — admin bisa coba reconcile lagi nanti
+      console.log(`[Reconcile] Order ${orderId} still PENDING.`);
+      return { status: "pending", message: "Masih pending — coba reconcile lagi nanti" };
     }
   }
 

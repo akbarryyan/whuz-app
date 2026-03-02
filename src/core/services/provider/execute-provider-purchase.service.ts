@@ -1,5 +1,4 @@
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
-import { IQueuePort } from "@/src/core/ports/queue.port";
 import { ProviderFactory } from "@/src/infra/providers/provider.factory";
 import { ProviderType } from "@/src/core/domain/enums/provider.enum";
 import { OrderStatus } from "@/src/core/domain/enums/order.enum";
@@ -8,17 +7,21 @@ import { checkAndUpgradeUserTier } from "@/lib/pricing";
 /**
  * ExecuteProviderPurchaseService
  *
- * Non-negotiables (constitution §2.2, §2.1):
- * - Must be idempotent: if order already SUCCESS/FAILED, exits early.
- * - If providerRef already set (job retry scenario), skip re-purchase.
- * - Always logs request/response to OrderProviderLog.
- * - On PENDING result: schedules a reconcile job.
- * - On FAILED with wallet: releases the hold.
+ * Dijalankan langsung (inline) saat webhook PAID atau checkout WALLET.
+ * Tidak lagi menggunakan BullMQ queue.
+ *
+ * Idempotency & anti double-execute:
+ * 1. Jika order sudah SUCCESS/FAILED → skip (terminal state).
+ * 2. Jika order sudah punya providerRef → skip (sudah pernah call provider).
+ * 3. Atomic claim via `claimForProcessing()` — hanya satu proses yang bisa
+ *    mengubah status dari PAID → PROCESSING_PROVIDER (optimistic locking).
+ *
+ * Pada pending result: simpan providerRef, biarkan status PROCESSING_PROVIDER.
+ * Admin bisa reconcile manual via API.
  */
 export class ExecuteProviderPurchaseService {
   constructor(
     private readonly orderRepo: OrderRepository,
-    private readonly queue: IQueuePort
   ) {}
 
   async execute(orderId: string): Promise<void> {
@@ -29,21 +32,25 @@ export class ExecuteProviderPurchaseService {
       return;
     }
 
-    // ── Idempotency guard ─────────────────────────────────────────────────
+    // ── Idempotency guard: terminal state ─────────────────────────────────
     if (order.status === OrderStatus.SUCCESS || order.status === OrderStatus.FAILED) {
       console.log(`[Execute] Order ${orderId} already ${order.status}. Skipping.`);
       return;
     }
 
-    // If providerRef already exists this job was already started — reconcile instead
-    if (order.providerRef && order.status === OrderStatus.PROCESSING_PROVIDER) {
-      console.log(`[Execute] Order ${orderId} already has providerRef. Scheduling reconcile.`);
-      await this.queue.enqueueReconcile(orderId, 10_000);
+    // ── Anti double-execute: providerRef sudah ada → jangan call provider lagi
+    if (order.providerRef) {
+      console.log(`[Execute] Order ${orderId} already has providerRef=${order.providerRef}. Skipping — reconcile jika perlu.`);
       return;
     }
 
-    // ── Mark PROCESSING_PROVIDER ──────────────────────────────────────────
-    await this.orderRepo.updateStatus(orderId, OrderStatus.PROCESSING_PROVIDER);
+    // ── Atomic claim: PAID → PROCESSING_PROVIDER ──────────────────────────
+    // Hanya satu proses yang bisa menang race condition ini
+    const claimed = await this.orderRepo.claimForProcessing(orderId);
+    if (!claimed) {
+      console.log(`[Execute] Order ${orderId} failed to claim (already claimed by another process). Skipping.`);
+      return;
+    }
 
     // ── Resolve provider ──────────────────────────────────────────────────
     const providerType = (order.provider ?? "DIGIFLAZZ") as ProviderType;
@@ -118,13 +125,13 @@ export class ExecuteProviderPurchaseService {
 
       console.log(`[Execute] Order ${orderId} SUCCESS — SN: ${result.serialNumber}`);
     } else if (result.status === "pending") {
-      // Provider returned pending → save ref and schedule reconcile
+      // Provider returned pending → simpan providerRef, biarkan PROCESSING_PROVIDER
+      // Admin bisa reconcile manual via /api/admin/transactions/:id/reconcile
       await this.orderRepo.updateStatus(orderId, OrderStatus.PROCESSING_PROVIDER, {
         providerRef: result.transactionId,
       });
 
-      await this.queue.enqueueReconcile(orderId, 60_000);
-      console.log(`[Execute] Order ${orderId} PENDING. Reconcile scheduled.`);
+      console.log(`[Execute] Order ${orderId} PENDING — providerRef=${result.transactionId}. Admin bisa reconcile manual.`);
     } else {
       await this.orderRepo.updateStatus(orderId, OrderStatus.FAILED, {
         providerRef: result.transactionId,

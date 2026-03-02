@@ -8,14 +8,12 @@
 import { NextResponse } from "next/server";
 import { ReconcileOrderService } from "@/src/core/services/provider/reconcile-order.service";
 import { OrderRepository } from "@/src/infra/db/repositories/order.repository";
-import { BullMQQueueAdapter } from "@/src/infra/queue/bullmq/queue";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const reconcileService = new ReconcileOrderService(
   new OrderRepository(),
-  new BullMQQueueAdapter()
 );
 
 export async function POST() {
