@@ -60,7 +60,11 @@ export class ExecuteProviderPurchaseService {
     const purchaseReq = {
       productCode: order.product.providerCode,
       target: order.targetNumber,
-      additionalData: (order.targetData as Record<string, any>) ?? undefined,
+      additionalData: {
+        ...(((order.targetData as Record<string, any>) ?? {})),
+        // Pass product type so adapters can route to the correct endpoint
+        _productType: order.product.type,
+      },
     };
 
     await this.orderRepo.logProviderAction({

@@ -78,6 +78,13 @@ export class OrderRepository {
     });
   }
 
+  async findByProviderRef(providerRef: string) {
+    return prisma.order.findFirst({
+      where: { providerRef },
+      include: { product: true, paymentInvoice: true, user: true },
+    });
+  }
+
   async findByViewTokenHash(hash: string) {
     return prisma.order.findUnique({
       where: { viewTokenHash: hash },

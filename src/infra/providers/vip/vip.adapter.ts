@@ -162,22 +162,69 @@ export class VipResellerAdapter implements IProviderPort {
 
   async purchase(request: ProviderPurchaseRequest): Promise<ProviderPurchaseResponse> {
     try {
-      const refId = `VIP-${Date.now()}`;
       const sign = this.sign || this.generateSignature();
-      
-      const response = await fetch(`${this.baseUrl}/prepaid`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
+      const productType = request.additionalData?._productType as string | undefined;
+      const isJoki = productType === "joki";
+      const isGame = !isJoki && (!!(request.additionalData?.zone) || productType === "game");
+      const refId = isJoki
+        ? `JOKI-VIP-${Date.now()}`
+        : isGame
+        ? `GAME-VIP-${Date.now()}`
+        : `VIP-${Date.now()}`;
+
+      let body: Record<string, string>;
+      let endpoint: string;
+
+      if (isJoki) {
+        // Joki: POST /game-feature, parameters berbeda dari top-up game
+        // data_no = email/username, data_zone = password akun
+        endpoint = `${this.baseUrl}/game-feature`;
+        body = {
           key: this.apiKey,
-          sign: sign,
+          sign,
+          type: "order",
+          service: request.productCode,
+          data_no: request.target,                                         // email/username
+          data_zone: String(request.additionalData?.password ?? ""),       // password akun
+          additional_data: String(request.additionalData?.additional_data ?? ""), // Login|Nick|Hero|Catatan
+          quantity: String(request.additionalData?.quantity ?? 1),
+          ref_id: refId,
+        };
+      } else if (isGame) {
+        // Game & Streaming top-up: POST /game-feature
+        endpoint = `${this.baseUrl}/game-feature`;
+        body = {
+          key: this.apiKey,
+          sign,
           type: "order",
           service: request.productCode,
           data_no: request.target,
           ref_id: refId,
-        }).toString(),
+        };
+        // Zone / server_id: only include if the game actually requires it
+        const zone = request.additionalData?.zone ?? request.additionalData?.server_id;
+        if (zone !== undefined && zone !== null && zone !== "") {
+          body.zone = String(zone);
+        }
+      } else {
+        // Prepaid (pulsa, paket data, token listrik, dll): POST /prepaid
+        endpoint = `${this.baseUrl}/prepaid`;
+        body = {
+          key: this.apiKey,
+          sign,
+          type: "order",
+          service: request.productCode,
+          data_no: request.target,
+          ref_id: refId,
+        };
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams(body).toString(),
       });
 
       if (!response.ok) {
@@ -188,19 +235,25 @@ export class VipResellerAdapter implements IProviderPort {
       }
 
       const data = await response.json();
-      const vipStatus: string = data.data?.status ?? "";
 
-      const status =
+      // Status field: for game-feature response is same structure as prepaid
+      const item = Array.isArray(data.data) ? data.data[0] : data.data;
+      const vipStatus: string = item?.status ?? data.data?.status ?? "";
+
+      // "waiting" dari joki = pending (akan diproses manual oleh joki)
+      const status: "success" | "pending" | "failed" =
         vipStatus === "success" ? "success"
-        : vipStatus === "pending" ? "pending"
+        : (vipStatus === "pending" || vipStatus === "waiting" || vipStatus === "processing") ? "pending"
         : "failed";
 
       return {
         success: data.result === true && status === "success",
         status,
-        transactionId: data.data?.trx_id || refId,
-        serialNumber: data.data?.sn,
-        message: data.data?.message || data.message || "Transaction processed",
+        // Use refId as transactionId (VIP trx_id may come in item.trxid)
+        transactionId: item?.trxid || data.data?.trx_id || refId,
+        // SN in "sn" for prepaid, "note" for games/joki
+        serialNumber: item?.sn || item?.note || data.data?.sn || data.data?.note || undefined,
+        message: item?.note || data.data?.message || data.message || "Transaction processed",
         rawResponse: data,
       };
     } catch (error) {
@@ -212,18 +265,25 @@ export class VipResellerAdapter implements IProviderPort {
   }
 
   async checkStatus(providerRef: string): Promise<ProviderPurchaseResponse> {
-    // VIP Reseller status check: POST /prepaid with type=status and ref_id
+    // Determine endpoint from providerRef prefix:
+    //   "GAME-VIP-..." or "JOKI-VIP-..." → /game-feature
+    //   "VIP-..." or others              → /prepaid
+    const isGameOrJoki = providerRef.startsWith("GAME-VIP-") || providerRef.startsWith("JOKI-VIP-");
+    const endpoint = isGameOrJoki
+      ? `${this.baseUrl}/game-feature`
+      : `${this.baseUrl}/prepaid`;
+
     try {
       const sign = this.sign || this.generateSignature();
 
-      const response = await fetch(`${this.baseUrl}/prepaid`, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           key: this.apiKey,
           sign,
           type: "status",
-          ref_id: providerRef,
+          trxid: providerRef,
         }).toString(),
       });
 
@@ -232,19 +292,23 @@ export class VipResellerAdapter implements IProviderPort {
       }
 
       const data = await response.json();
-      const vipStatus: string = data.data?.status ?? "";
 
-      const status =
+      // data.data is an array — take first item
+      const item = Array.isArray(data.data) ? data.data[0] : data.data;
+      const vipStatus: string = item?.status ?? "";
+
+      const status: "success" | "pending" | "failed" =
         vipStatus === "success" ? "success"
-        : vipStatus === "pending" ? "pending"
+        : (vipStatus === "pending" || vipStatus === "waiting" || vipStatus === "processing") ? "pending"
         : "failed";
 
       return {
         success: data.result === true && status === "success",
         status,
-        transactionId: data.data?.trx_id || providerRef,
-        serialNumber: data.data?.sn,
-        message: data.data?.message || data.message || vipStatus,
+        transactionId: item?.trxid || providerRef,
+        // VIP returns SN in the "note" field
+        serialNumber: item?.note || item?.sn || undefined,
+        message: item?.note || data.message || vipStatus,
         rawResponse: data,
       };
     } catch (error) {
