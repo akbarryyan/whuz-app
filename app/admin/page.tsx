@@ -28,10 +28,11 @@ function AdminDashboardPageContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
-      <div className="mx-auto flex w-full gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:px-8">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Sidebar dirender di luar flex container agar tidak mempengaruhi lebar konten */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:gap-6">
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2.1fr_1fr]">
