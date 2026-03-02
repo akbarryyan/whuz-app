@@ -27,8 +27,8 @@ function AdminDashboardPageContent() {
   }, []);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f5f7fb] text-slate-900">
-      <div className="mx-auto flex w-full gap-4 px-3 py-4 sm:gap-6 sm:px-4 sm:py-6 lg:px-6">
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
+      <div className="mx-auto flex w-full gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:px-8">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
