@@ -100,7 +100,7 @@ export default function TransactionTable() {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 overflow-hidden min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-800">Transaksi Terbaru</p>

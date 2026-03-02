@@ -76,7 +76,7 @@ export default function CustomerSupport() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5 overflow-hidden min-w-0">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-800">Customer Support</p>
         <span className="flex items-center gap-1.5 text-[11px] text-slate-400">

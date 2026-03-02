@@ -35,14 +35,14 @@ function AdminDashboardPageContent() {
         <div className="flex flex-col gap-4 sm:gap-6">
           <Header onMenuClick={() => setSidebarOpen(true)} />
 
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2.1fr_1fr]">
-            <section className="flex flex-col gap-4 sm:gap-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[2.1fr_1fr] min-w-0">
+            <section className="flex flex-col gap-4 sm:gap-6 min-w-0">
               <StatsCards />
               <RevenueChart />
               <TransactionTable />
             </section>
 
-            <aside className="flex flex-col gap-4 sm:gap-6">
+            <aside className="flex flex-col gap-4 sm:gap-6 min-w-0">
               <ProviderStatus />
               <CustomerSupport />
             </aside>
