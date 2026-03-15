@@ -114,6 +114,7 @@ model User {
   orders          Order[]
   walletTopups    WalletTopup[]
   tickets         Ticket[]
+  brandReviews    BrandReview[]
 
   @@index([email])
   @@index([phone])
@@ -431,6 +432,28 @@ model VoucherClaim {
 }
 
 // ============================================
+// BRAND REVIEW MODEL
+// ============================================
+
+model BrandReview {
+  id          String   @id @default(cuid())
+  brandSlug   String   @db.VarChar(200) // slug from brand name e.g. "mobile-legends"
+  userId      String
+  userName    String   @db.VarChar(100) // cached display name at time of review
+  rating      Int      // 1-5 stars
+  comment     String   @db.VarChar(500)
+  isApproved  Boolean  @default(false)  // admin moderation — only shown when true
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([brandSlug, userId]) // one review per user per brand
+  @@index([brandSlug, isApproved, createdAt])
+  @@map("brand_reviews")
+}
+
+// ============================================
 // NOTIFICATION MODEL
 // ============================================
 
@@ -449,4 +472,22 @@ model Notification {
   @@index([userId, createdAt])
   @@index([type, createdAt])
   @@map("notifications")
+}
+
+// ============================================
+// OTP CODE MODEL (WhatsApp OTP Login/Register)
+// ============================================
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String   @db.VarChar(20)
+  code      String   @db.VarChar(6)   // 6-digit OTP
+  purpose   String   @db.VarChar(20)  // LOGIN, REGISTER
+  attempts  Int      @default(0)      // failed verification attempts
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose, createdAt])
+  @@map("otp_codes")
 }

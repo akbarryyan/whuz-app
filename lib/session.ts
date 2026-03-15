@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 export interface SessionData {
   userId?: string;
   email?: string;
+  phone?: string;
   name?: string;
   role?: string; // "MEMBER" | "ADMIN"
   isLoggedIn?: boolean;
