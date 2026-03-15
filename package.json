@@ -25,6 +25,7 @@
     "bullmq": "^5.70.0",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
+    "nodemailer": "^8.0.2",
     "pakasir-sdk": "^1.0.5",
     "prisma": "^5.22.0",
     "react": "19.2.3",
