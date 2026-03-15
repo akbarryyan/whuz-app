@@ -131,7 +131,7 @@ export default function Home() {
         <HomeSkeleton />
       </div>
 
-      {/* Mobile Container — fades in */}
+      {/* Mobile Container — Fades in */}
       <div
         className={`relative w-full max-w-[480px] min-h-screen bg-[#F5F5F5] shadow-2xl flex flex-col gap-0 transition-opacity duration-500 ${
           ready ? "opacity-100" : "opacity-0"
