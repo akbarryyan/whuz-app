@@ -42,7 +42,7 @@ export async function GET() {
 
 const PatchSchema = z.object({
   key: z.string().min(1),
-  value: z.string().min(1),
+  value: z.string(),  // allow empty — empty value will delete the key (revert to .env default)
 });
 
 export async function PATCH(request: Request) {
@@ -61,7 +61,12 @@ export async function PATCH(request: Request) {
     );
   }
 
-  await setSiteConfig(parsed.data.key, parsed.data.value);
+  // If value is empty, delete the key so it falls back to .env default
+  if (parsed.data.value === "") {
+    await deleteSiteConfig(parsed.data.key);
+  } else {
+    await setSiteConfig(parsed.data.key, parsed.data.value);
+  }
 
   // Also sync ProviderFactory globalThis so it takes effect immediately
   await initProviderModesFromDB();

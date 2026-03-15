@@ -94,6 +94,15 @@ export default function SettingsPage() {
   const [fonnteToken, setFonnteToken] = useState("");
   const [showFonnteToken, setShowFonnteToken] = useState(false);
 
+  // SMTP Email settings
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpFrom, setSmtpFrom] = useState("");
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [smtpTestSending, setSmtpTestSending] = useState(false);
+
   const toast = useToast();
 
   const loadConfig = useCallback(async () => {
@@ -127,6 +136,11 @@ export default function SettingsPage() {
         setSiteDescription(raw.site_description ?? "");
         setSiteKeywords(raw.site_keywords ?? "");
         setFonnteToken(raw.FONNTE_TOKEN ?? "");
+        setSmtpHost(raw.SMTP_HOST ?? "");
+        setSmtpPort(raw.SMTP_PORT ?? "587");
+        setSmtpUser(raw.SMTP_USER ?? "");
+        setSmtpPass(raw.SMTP_PASS ?? "");
+        setSmtpFrom(raw.SMTP_FROM ?? "");
       })
       .catch(() => {});
   }, []);
@@ -206,6 +220,60 @@ export default function SettingsPage() {
       toast.error(`Gagal menyimpan ${label}`);
     } finally {
       setSiteSaving(null);
+    }
+  }
+
+  // ── Save all SMTP settings at once ─────────────────────────────────────────
+
+  async function saveSmtpSettings() {
+    setSiteSaving("smtp_all");
+    try {
+      const pairs: { key: string; value: string }[] = [
+        { key: "SMTP_HOST", value: smtpHost },
+        { key: "SMTP_PORT", value: smtpPort },
+        { key: "SMTP_USER", value: smtpUser },
+        { key: "SMTP_PASS", value: smtpPass },
+        { key: "SMTP_FROM", value: smtpFrom },
+      ];
+      for (const { key, value } of pairs) {
+        const res = await fetch("/api/admin/site-config", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast.error(`Gagal menyimpan ${key}`);
+          setSiteSaving(null);
+          return;
+        }
+      }
+      toast.success("Konfigurasi SMTP berhasil disimpan");
+    } catch {
+      toast.error("Gagal menyimpan konfigurasi SMTP");
+    } finally {
+      setSiteSaving(null);
+    }
+  }
+
+  async function sendTestEmail() {
+    if (!smtpUser) {
+      toast.error("Simpan konfigurasi SMTP terlebih dahulu");
+      return;
+    }
+    setSmtpTestSending(true);
+    try {
+      const res = await fetch("/api/admin/smtp-test", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Email test berhasil dikirim ke ${data.to}`);
+      } else {
+        toast.error(data.error ?? "Gagal mengirim email test");
+      }
+    } catch {
+      toast.error("Gagal mengirim email test");
+    } finally {
+      setSmtpTestSending(false);
     }
   }
 
@@ -566,6 +634,172 @@ export default function SettingsPage() {
                     <span className="text-[10px] text-amber-600 font-medium">Token belum diisi — login OTP WhatsApp tidak akan berfungsi</span>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* ─── SMTP Email Configuration ──────────────────────────────── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-700">📧 SMTP Email (OTP)</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Konfigurasi SMTP untuk mengirim OTP dan notifikasi via email.
+                Disarankan menggunakan Gmail App Password atau layanan SMTP transactional.
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              {/* SMTP Host */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    SMTP Host
+                  </label>
+                  <input
+                    type="text"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    placeholder="smtp.gmail.com"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    SMTP Port
+                  </label>
+                  <input
+                    type="text"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    placeholder="587"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">587 (TLS) atau 465 (SSL)</p>
+                </div>
+              </div>
+
+              {/* SMTP User */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  SMTP Username / Email
+                </label>
+                <input
+                  type="email"
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  placeholder="your-email@gmail.com"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                />
+              </div>
+
+              {/* SMTP Pass */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  SMTP Password / App Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSmtpPass ? "text" : "password"}
+                    value={smtpPass}
+                    onChange={(e) => setSmtpPass(e.target.value)}
+                    placeholder="App Password dari Google atau password SMTP"
+                    className="w-full px-3 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpPass((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                    tabIndex={-1}
+                  >
+                    {showSmtpPass ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Untuk Gmail, gunakan{" "}
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline font-medium"
+                  >
+                    App Password
+                  </a>{" "}
+                  (bukan password akun biasa).
+                </p>
+              </div>
+
+              {/* SMTP From */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Sender / From Email
+                </label>
+                <input
+                  type="email"
+                  value={smtpFrom}
+                  onChange={(e) => setSmtpFrom(e.target.value)}
+                  placeholder="noreply@whuzpay.com"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 font-mono text-xs"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Alamat email pengirim yang ditampilkan pada email OTP. Biasanya sama dengan SMTP Username.
+                </p>
+              </div>
+
+              {/* Status & Actions */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  {smtpUser && smtpPass ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                      <span className="text-[10px] text-green-600 font-medium">SMTP sudah dikonfigurasi</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                      <span className="text-[10px] text-amber-600 font-medium">SMTP belum dikonfigurasi — OTP Email tidak akan berfungsi</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={sendTestEmail}
+                    disabled={smtpTestSending || !smtpUser || !smtpPass}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {smtpTestSending ? "Mengirim…" : "📤 Kirim Test Email"}
+                  </button>
+                  <button
+                    onClick={saveSmtpSettings}
+                    disabled={siteSaving === "smtp_all"}
+                    className="px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {siteSaving === "smtp_all" ? "Menyimpan…" : "💾 Simpan Semua"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

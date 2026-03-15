@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/src/infra/db/prisma";
+import { normalizePhone, isValidPhone } from "@/lib/fonnte";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, confirmPassword } = body;
+    const { name, email, phone, password, confirmPassword } = body;
 
     // --- Validasi input ---
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !phone || !password || !confirmPassword) {
       return NextResponse.json(
         { success: false, message: "Semua field wajib diisi." },
         { status: 400 }
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedPhone = normalizePhone(phone);
+    if (!isValidPhone(normalizedPhone)) {
+      return NextResponse.json(
+        { success: false, message: "Format nomor WhatsApp tidak valid. Gunakan format 08xxxxxxxxx." },
+        { status: 400 }
+      );
+    }
+
     if (typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { success: false, message: "Password minimal 6 karakter." },
@@ -45,14 +54,27 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Cek email sudah terdaftar ---
-    const existingUser = await prisma.user.findUnique({
+    const existingByEmail = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       select: { id: true },
     });
 
-    if (existingUser) {
+    if (existingByEmail) {
       return NextResponse.json(
         { success: false, message: "Email sudah terdaftar. Gunakan email lain atau login." },
+        { status: 409 }
+      );
+    }
+
+    // --- Cek phone sudah terdaftar ---
+    const existingByPhone = await prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+      select: { id: true },
+    });
+
+    if (existingByPhone) {
+      return NextResponse.json(
+        { success: false, message: "Nomor WhatsApp sudah terdaftar. Gunakan nomor lain atau login." },
         { status: 409 }
       );
     }
@@ -65,6 +87,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: name.trim(),
         email: email.toLowerCase().trim(),
+        phone: normalizedPhone,
         passwordHash,
         role: "MEMBER",
         isActive: true,
@@ -72,6 +95,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true,
         email: true,
+        phone: true,
         name: true,
         role: true,
       },
@@ -82,6 +106,7 @@ export async function POST(req: NextRequest) {
     session.isLoggedIn = true;
     session.userId = newUser.id;
     session.email = newUser.email ?? "";
+    session.phone = newUser.phone ?? "";
     session.name = newUser.name ?? "";
     session.role = newUser.role;
     await session.save();
@@ -92,6 +117,7 @@ export async function POST(req: NextRequest) {
       user: {
         id: newUser.id,
         email: newUser.email,
+        phone: newUser.phone,
         name: newUser.name,
         role: newUser.role,
       },

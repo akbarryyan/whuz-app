@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getSession } from "@/lib/session";
 import { prisma } from "@/src/infra/db/prisma";
+import { normalizePhone, isValidPhone } from "@/lib/fonnte";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password } = body;
+    const { identifier, password, method } = body;
+    // method: "whatsapp" | "email"
+    // identifier: nomor WA atau email
 
     // --- Validasi input ---
-    if (!email || !password) {
+    if (!identifier || !password || !method) {
       return NextResponse.json(
-        { success: false, message: "Email dan password wajib diisi." },
+        { success: false, message: "Semua field wajib diisi." },
         { status: 400 }
       );
     }
 
-    if (typeof email !== "string" || !email.includes("@")) {
+    if (!["whatsapp", "email"].includes(method)) {
       return NextResponse.json(
-        { success: false, message: "Format email tidak valid." },
+        { success: false, message: "Metode login tidak valid." },
         { status: 400 }
       );
     }
@@ -30,22 +32,67 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Cari user di database ---
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        passwordHash: true,
-        isActive: true,
-      },
-    });
+    // --- Cari user ---
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let user: any;
+
+    if (method === "email") {
+      const email = identifier.toLowerCase().trim();
+      if (!email.includes("@")) {
+        return NextResponse.json(
+          { success: false, message: "Format email tidak valid." },
+          { status: 400 }
+        );
+      }
+
+      user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          name: true,
+          role: true,
+          passwordHash: true,
+          isActive: true,
+        },
+      });
+    } else {
+      // method === "whatsapp"
+      const phone = normalizePhone(identifier);
+      if (!isValidPhone(phone)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Format nomor WhatsApp tidak valid.",
+          },
+          { status: 400 }
+        );
+      }
+
+      user = await prisma.user.findUnique({
+        where: { phone },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          name: true,
+          role: true,
+          passwordHash: true,
+          isActive: true,
+        },
+      });
+    }
 
     if (!user || !user.passwordHash) {
       return NextResponse.json(
-        { success: false, message: "Email atau password salah." },
+        {
+          success: false,
+          message:
+            method === "email"
+              ? "Email atau password salah."
+              : "Nomor WA atau password salah.",
+        },
         { status: 401 }
       );
     }
@@ -61,29 +108,24 @@ export async function POST(req: NextRequest) {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { success: false, message: "Email atau password salah." },
+        {
+          success: false,
+          message:
+            method === "email"
+              ? "Email atau password salah."
+              : "Nomor WA atau password salah.",
+        },
         { status: 401 }
       );
     }
 
-    // --- Set session ---
-    const session = await getSession();
-    session.isLoggedIn = true;
-    session.userId = user.id;
-    session.email = user.email ?? "";
-    session.name = user.name ?? "";
-    session.role = user.role;
-    await session.save();
-
+    // --- Password valid! Return success without setting session ---
+    // Session akan di-set setelah OTP verified (di /api/auth/login/verify)
     return NextResponse.json({
       success: true,
-      message: "Login berhasil! Selamat datang kembali.",
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
+      message: "Password valid. Silakan verifikasi OTP.",
+      requireOtp: true,
+      userId: user.id,
     });
   } catch (error) {
     console.error("[AUTH LOGIN ERROR]", error);
