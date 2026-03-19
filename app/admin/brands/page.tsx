@@ -39,6 +39,8 @@ export default function AdminBrandsPage() {
   const [editingBrand, setEditingBrand] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [globalBorderUrl, setGlobalBorderUrl] = useState("");
+  const [globalBorderSaving, setGlobalBorderSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const toast = useToast();
 
@@ -48,10 +50,23 @@ export default function AdminBrandsPage() {
 
   const fetchBrands = async () => {
     try {
-      const res = await fetch("/api/admin/brands");
-      const data = await res.json();
-      if (data.success) setBrands(data.data);
+      const [brandsRes, siteConfigRes] = await Promise.all([
+        fetch("/api/admin/brands"),
+        fetch("/api/admin/site-config"),
+      ]);
+      const [brandsData, siteConfigData] = await Promise.all([
+        brandsRes.json(),
+        siteConfigRes.json(),
+      ]);
+
+      if (brandsData.success) setBrands(brandsData.data);
       else toast.error("Gagal memuat data brand.");
+
+      if (siteConfigData.success) {
+        setGlobalBorderUrl(siteConfigData.data?.raw?.HOME_GAME_GRID_BORDER_IMAGE_URL ?? "");
+      } else {
+        toast.error("Gagal memuat pengaturan border.");
+      }
     } catch {
       toast.error("Gagal memuat data brand.");
     } finally {
@@ -64,18 +79,31 @@ export default function AdminBrandsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startEdit = (brand: BrandRow) => { setEditingBrand(brand.brand); setEditUrl(brand.imageUrl ?? ""); };
-  const cancelEdit = () => { setEditingBrand(null); setEditUrl(""); };
+  const startEdit = (brand: BrandRow) => {
+    setEditingBrand(brand.brand);
+    setEditUrl(brand.imageUrl ?? "");
+  };
+  const cancelEdit = () => {
+    setEditingBrand(null);
+    setEditUrl("");
+  };
 
   const saveImage = async (brandName: string) => {
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/brands", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: brandName, imageUrl: editUrl.trim() }) });
+      const payload = {
+        brand: brandName,
+        imageUrl: editUrl.trim(),
+      };
+      const res = await fetch("/api/admin/brands", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (data.success) {
-        toast.success("Gambar berhasil disimpan.");
-        setBrands((prev) => prev.map((b) => b.brand === brandName ? { ...b, imageUrl: editUrl.trim() || null } : b));
-        setEditingBrand(null); setEditUrl("");
+        toast.success("Gambar brand berhasil disimpan.");
+        setBrands((prev) => prev.map((b) => b.brand === brandName ? {
+          ...b,
+          imageUrl: editUrl.trim() || null,
+        } : b));
+        cancelEdit();
       } else toast.error(data.error ?? "Gagal menyimpan.");
     } catch { toast.error("Gagal menyimpan."); } finally { setSaving(false); }
   };
@@ -87,11 +115,32 @@ export default function AdminBrandsPage() {
       const res = await fetch("/api/admin/brands", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: brandName }) });
       const data = await res.json();
       if (data.success) {
-        toast.success("Gambar dihapus.");
+        toast.success("Gambar brand dihapus.");
         setBrands((prev) => prev.map((b) => b.brand === brandName ? { ...b, imageUrl: null } : b));
         if (editingBrand === brandName) cancelEdit();
       } else toast.error(data.error ?? "Gagal menghapus.");
     } catch { toast.error("Gagal menghapus."); } finally { setSaving(false); }
+  };
+
+  const saveGlobalBorder = async () => {
+    setGlobalBorderSaving(true);
+    try {
+      const res = await fetch("/api/admin/site-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "HOME_GAME_GRID_BORDER_IMAGE_URL",
+          value: globalBorderUrl.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success("Border global berhasil disimpan.");
+      else toast.error(data.error ?? "Gagal menyimpan border global.");
+    } catch {
+      toast.error("Gagal menyimpan border global.");
+    } finally {
+      setGlobalBorderSaving(false);
+    }
   };
 
   const openConfig = (brand: BrandRow) => {
@@ -168,9 +217,36 @@ export default function AdminBrandsPage() {
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
             <p className="text-sm text-blue-700 leading-relaxed">
-              Atur <strong>gambar</strong> dan <strong>field input</strong> per brand — contohnya Mobile Legends butuh User ID + Zone ID,
-              Free Fire hanya User ID. Konfigurasi disimpan di <code className="bg-blue-100 px-1 rounded text-xs">brand_meta</code> dan tidak terhapus saat sync produk.
+              Atur <strong>gambar</strong> per brand dan <strong>border card global</strong> untuk semua brand. Gambar brand disimpan di
+              <code className="bg-blue-100 px-1 rounded text-xs"> brand_meta </code>, sedangkan border global disimpan di
+              <code className="bg-blue-100 px-1 rounded text-xs"> site_configs </code>.
             </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
+            <div className="flex flex-col gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Border Card Global</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Dipakai untuk semua card brand di homepage game grid.</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com/border.png"
+                  value={globalBorderUrl}
+                  onChange={(e) => setGlobalBorderUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveGlobalBorder()}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                />
+                <button
+                  onClick={saveGlobalBorder}
+                  disabled={globalBorderSaving}
+                  className="px-4 py-2 bg-[#2563eb] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {globalBorderSaving ? "..." : "Simpan Border"}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="relative">
@@ -228,7 +304,7 @@ export default function AdminBrandsPage() {
                         {!isEditing ? (
                           <button onClick={() => startEdit(brand)}
                             className="px-2.5 py-1.5 bg-[#2563eb] text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
-                            🖼 Gambar
+                            Gambar
                           </button>
                         ) : (
                           <button onClick={cancelEdit}
@@ -252,10 +328,10 @@ export default function AdminBrandsPage() {
                     {isEditing && (
                       <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
                         <label className="text-xs text-slate-500 font-medium block mb-1.5">URL Gambar (HTTPS)</label>
-                        <div className="flex gap-2">
-                          <input type="url" placeholder="https://example.com/image.png" value={editUrl} onChange={(e) => setEditUrl(e.target.value)}
-                            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                            autoFocus onKeyDown={(e) => e.key === "Enter" && saveImage(brand.brand)} />
+                        <input type="url" placeholder="https://example.com/image.png" value={editUrl} onChange={(e) => setEditUrl(e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                          autoFocus onKeyDown={(e) => e.key === "Enter" && saveImage(brand.brand)} />
+                        <div className="mt-2 flex gap-2">
                           <button onClick={() => saveImage(brand.brand)} disabled={saving}
                             className="px-4 py-2 bg-[#2563eb] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                             {saving ? "..." : "Simpan"}

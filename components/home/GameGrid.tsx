@@ -10,6 +10,8 @@ interface BrandItem {
   imageUrl: string | null;
 }
 
+const DEFAULT_GRID_BORDER_IMAGE_URL = "https://iili.io/qwmtmrb.md.png";
+
 // Fallback images for brands without a DB imageUrl
 const BRAND_IMAGES_FALLBACK: Record<string, string> = {
   "Mobile Legends": "https://i.ibb.co.com/9wX5jZm/ml.png",
@@ -54,6 +56,7 @@ interface GameGridProps {
 export default function GameGrid({ category }: GameGridProps) {
   const router = useRouter();
   const [brands, setBrands] = useState<BrandItem[]>([]);
+  const [globalBorderImageUrl, setGlobalBorderImageUrl] = useState<string | null>(DEFAULT_GRID_BORDER_IMAGE_URL);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
@@ -81,6 +84,7 @@ export default function GameGrid({ category }: GameGridProps) {
             });
           }
           setBrands(data);
+          setGlobalBorderImageUrl(res.globalBorderImageUrl ?? DEFAULT_GRID_BORDER_IMAGE_URL);
         }
       })
       .catch(() => {})
@@ -144,6 +148,7 @@ export default function GameGrid({ category }: GameGridProps) {
       <div className="grid grid-cols-4 gap-x-3 gap-y-5">
         {displayedBrands.map((brand, idx) => {
           const image = brand.imageUrl ?? BRAND_IMAGES_FALLBACK[brand.brand] ?? null;
+          const borderImage = globalBorderImageUrl ?? DEFAULT_GRID_BORDER_IMAGE_URL;
           const gradient = BRAND_GRADIENTS[idx % BRAND_GRADIENTS.length];
           const initials = brand.brand
             .split(" ")
@@ -161,7 +166,7 @@ export default function GameGrid({ category }: GameGridProps) {
               {/* Temporary decorative border overlay for the full card */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://iili.io/qwmtmrb.md.png"
+                src={borderImage}
                 alt=""
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 -top-3 bottom-0 z-10 h-[calc(100%+12px)] w-full object-fill"

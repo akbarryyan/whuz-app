@@ -21,7 +21,7 @@ export async function GET() {
     const metas = await prisma.brandMeta.findMany({
       select: { brand: true, imageUrl: true, inputFields: true, updatedAt: true },
     });
-    const metaMap: Record<string, { imageUrl: string | null; inputFields: any; updatedAt: Date }> = {};
+    const metaMap: Record<string, { imageUrl: string | null; inputFields: unknown; updatedAt: Date }> = {};
     for (const m of metas) metaMap[m.brand] = { imageUrl: m.imageUrl ?? null, inputFields: m.inputFields ?? null, updatedAt: m.updatedAt };
 
     const data = productBrands.map((b) => ({
@@ -46,12 +46,12 @@ export async function GET() {
 /**
  * PUT /api/admin/brands
  * Upsert imageUrl for a brand
- * Body: { brand: string, imageUrl: string }
+ * Body: { brand: string, imageUrl?: string }
  */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { brand, imageUrl } = body as { brand: string; imageUrl: string };
+    const { brand, imageUrl } = body as { brand: string; imageUrl?: string };
 
     if (!brand || typeof brand !== "string") {
       return NextResponse.json({ success: false, error: "brand diperlukan." }, { status: 400 });

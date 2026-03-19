@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/infra/db/prisma";
+import { getSiteConfig } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
@@ -36,14 +37,17 @@ export async function GET(request: NextRequest) {
       orderBy: { brand: "asc" },
     });
 
-    // Fetch imageUrls from BrandMeta in one query
+    // Fetch brand imageUrls from BrandMeta in one query
     const brandNames = brands.map((b) => b.brand);
-    const metas = await prisma.brandMeta.findMany({
-      where: { brand: { in: brandNames } },
-      select: { brand: true, imageUrl: true },
-    });
-    const metaMap: Record<string, string | null> = {};
-    for (const m of metas) metaMap[m.brand] = m.imageUrl ?? null;
+    const [metas, globalBorderImageUrl] = await Promise.all([
+      prisma.brandMeta.findMany({
+        where: { brand: { in: brandNames } },
+        select: { brand: true, imageUrl: true },
+      }),
+      getSiteConfig("HOME_GAME_GRID_BORDER_IMAGE_URL"),
+    ]);
+    const metaMap: Record<string, { imageUrl: string | null }> = {};
+    for (const m of metas) metaMap[m.brand] = { imageUrl: m.imageUrl ?? null };
 
     const data = brands.map((b) => ({
       brand: b.brand,
@@ -52,10 +56,14 @@ export async function GET(request: NextRequest) {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, ""),
       productCount: b._count.id,
-      imageUrl: metaMap[b.brand] ?? null,
+      imageUrl: metaMap[b.brand]?.imageUrl ?? null,
     }));
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({
+      success: true,
+      data,
+      globalBorderImageUrl: globalBorderImageUrl || null,
+    });
   } catch (error) {
     console.error("[CATALOG BRANDS ERROR]", error);
     return NextResponse.json(
