@@ -141,7 +141,7 @@ export default function GameGrid({ category }: GameGridProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-x-3 gap-y-5">
         {displayedBrands.map((brand, idx) => {
           const image = brand.imageUrl ?? BRAND_IMAGES_FALLBACK[brand.brand] ?? null;
           const gradient = BRAND_GRADIENTS[idx % BRAND_GRADIENTS.length];
@@ -156,32 +156,45 @@ export default function GameGrid({ category }: GameGridProps) {
             <button
               key={brand.slug}
               onClick={() => router.push(`/brand/${brand.slug}`)}
-              className="flex flex-col items-center gap-2 bg-white rounded-xl p-2 shadow-sm hover:shadow-md transition-shadow relative group"
+              className="group relative rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md"
             >
+              {/* Temporary decorative border overlay for the full card */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://iili.io/qwmtmrb.md.png"
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 -top-3 bottom-0 z-10 h-[calc(100%+12px)] w-full object-fill"
+                loading="lazy"
+              />
 
-              <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
-                {image ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={image}
-                    alt={brand.brand}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div
-                    className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center group-hover:scale-105 transition-transform`}
-                  >
-                    <span className="text-white font-bold text-lg drop-shadow-sm">
-                      {initials}
-                    </span>
+              <div className="relative z-0 flex flex-col items-center gap-2 px-3 pb-3 pt-4">
+                <div className="w-full aspect-square overflow-hidden rounded-lg bg-gradient-to-br from-purple-100 to-blue-100">
+                  <div className="h-full w-full overflow-hidden rounded-lg">
+                    {image ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={image}
+                        alt={brand.brand}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div
+                        className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradient} transition-transform group-hover:scale-105`}
+                      >
+                        <span className="text-lg font-bold text-white drop-shadow-sm">
+                          {initials}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
 
-              <span className="text-[11px] font-medium text-slate-700 text-center leading-tight line-clamp-2">
-                {brand.brand}
-              </span>
+                <span className="text-center text-[11px] font-medium leading-tight text-slate-700 line-clamp-2">
+                  {brand.brand}
+                </span>
+              </div>
             </button>
           );
         })}
